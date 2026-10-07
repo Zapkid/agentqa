@@ -81,7 +81,7 @@ class Database:
             or os.path.join(tempfile.mkdtemp(prefix="target_api_"), "orders.db")
         )
         size = 1 if bugs.perf("P05") else 8
-        self.acquire_timeout = 0.05 if bugs.perf("P05") else 5.0
+        self.acquire_timeout = 0.005 if bugs.perf("P05") else 5.0
         self._pool: queue.Queue[sqlite3.Connection] = queue.Queue()
         for _ in range(size):
             conn = sqlite3.connect(self.path, check_same_thread=False, timeout=10)

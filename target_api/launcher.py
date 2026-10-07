@@ -35,6 +35,7 @@ class TargetServer:
         workdir: Path | None = None,
         extra_env: dict[str, str] | None = None,
         cpu_limit_s: int | None = None,
+        cpus: set[int] | None = None,
     ) -> None:
         self.bugs = list(bugs)
         self.perf_bugs = list(perf_bugs)
@@ -43,6 +44,9 @@ class TargetServer:
         self.log_path = self.workdir / "server.log"
         self.extra_env = extra_env or {}
         self.cpu_limit_s = cpu_limit_s
+        self.cpus = (
+            cpus  # pin to these cores (stand-in for a container CPU limit; repeatable perf runs)
+        )
         self.proc: subprocess.Popen[bytes] | None = None
 
     @property
@@ -78,12 +82,19 @@ class TargetServer:
             "--no-access-log",
         ]
         self._stderr = open(self.workdir / "stderr.log", "wb")  # noqa: SIM115 - closed in stop()
+        cpus = self.cpus
+
+        def pin() -> None:
+            if cpus:
+                os.sched_setaffinity(0, cpus)
+
         self.proc = subprocess.Popen(
             cmd,
             env=env,
             cwd=REPO_ROOT,
             stdout=subprocess.DEVNULL,
             stderr=self._stderr,
+            preexec_fn=pin,
         )
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:

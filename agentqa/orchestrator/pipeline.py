@@ -128,7 +128,12 @@ class Pipeline:
         self.bundle: SpecBundle | None = None
         self.uncovered: list[Uncovered] = []
         self.rejections: list[tuple[str, str, str]] = []
-        self.hallucination: dict[str, float] = {"checked": 0, "with_violations": 0, "quarantined": 0, "repaired": 0}
+        self.hallucination: dict[str, float] = {
+            "checked": 0,
+            "with_violations": 0,
+            "quarantined": 0,
+            "repaired": 0,
+        }
         self.reused_tests: list[ValidatedTest] = []
         self.incremental_stats: dict[str, Any] = {}
         self.lessons: LessonStore | None = None

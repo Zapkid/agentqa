@@ -221,5 +221,90 @@ def killswitch(
         typer.echo(f"kill switch engaged: {ks.engage(reason)}")
 
 
+perf_app = typer.Typer(help="Performance tests: workload model, load runs, A/B, diagnosis.")
+app.add_typer(perf_app, name="perf")
+
+
+@perf_app.command("run")
+def perf_run(
+    test_type: Annotated[
+        str, typer.Option("--type", help="smoke | load | stress | spike | soak")
+    ] = "smoke",
+    perf_bugs: Annotated[str, typer.Option(help="Local build: clean or P01,P04")] = "clean",
+    iterations: Annotated[int | None, typer.Option(help="Default from config (3)")] = None,
+    seed_orders: Annotated[
+        int | None, typer.Option(help="Override the workload's data volume")
+    ] = None,
+    profile: str = "simulated",
+    target_config: Path = DEFAULT_TARGET,
+) -> None:
+    """Run one load test against a local build and check SLOs."""
+    from agentqa.perf import analysis
+    from agentqa.perf.charts import load_charts
+    from agentqa.perf.pipeline import PerfSession
+    from agentqa.target_config import load_target
+
+    target = load_target(target_config)
+    s = PerfSession(target, target.spec_path, target.docs_path, profile=profile)
+    bugs = [] if perf_bugs == "clean" else [b.strip() for b in perf_bugs.split(",")]
+    run = s.run_build(perf_bugs, bugs, test_type, iterations, seed_orders)
+    users, rps, p95 = analysis.curve(analysis.summarize(run))
+    typer.echo(
+        f"{test_type} on {perf_bugs}: users {users} rps {rps} p95 {p95} knee {analysis.knee(users, rps, p95)}"
+    )
+    for v in analysis.slo_verdicts(run, s.workload()):
+        typer.echo(
+            f"  SLO {v['slo']} ({v['source']}): {v['actual']} vs {v['limit']} -> {'met' if v['met'] else 'VIOLATED'}"
+        )
+    typer.echo(
+        f"chart: {load_charts({'candidate': run}, s.out_dir / f'chart-{perf_bugs}-{test_type}.png', test_type)}"
+    )
+
+
+@perf_app.command("ab")
+def perf_ab(
+    test_type: Annotated[str, typer.Option("--type")] = "smoke",
+    candidate: Annotated[
+        str, typer.Option(help="Perf defects in the candidate build, e.g. P01")
+    ] = "P01",
+    iterations: Annotated[int | None, typer.Option()] = None,
+    seed_orders: Annotated[int | None, typer.Option()] = 20000,
+    profile: str = "simulated",
+    target_config: Path = DEFAULT_TARGET,
+    fail_on_regression: Annotated[
+        bool, typer.Option(help="Exit 1 if the candidate regresses (CI gate)")
+    ] = True,
+) -> None:
+    """Relative A/B: clean vs candidate back to back on this host, with a measured noise band."""
+    from agentqa.perf import analysis
+    from agentqa.perf.pipeline import PerfSession, perf_report
+    from agentqa.target_config import load_target
+
+    target = load_target(target_config)
+    s = PerfSession(target, target.spec_path, target.docs_path, profile=profile)
+    bugs = [] if candidate == "clean" else [b.strip() for b in candidate.split(",")]
+    base = s.run_build("clean", [], test_type, iterations, seed_orders)
+    base2 = s.run_build("clean-repeat", [], test_type, iterations, seed_orders)
+    band = analysis.noise_band(base, base2)
+    cand = s.run_build(candidate, bugs, test_type, iterations, seed_orders)
+    res = s.ab(base, cand, band, f"ab-{candidate}")
+    report = perf_report(
+        [res], s.workload(), s.workload_path, s.out_dir / f"perf_report-{candidate}.md"
+    )
+    summary = res.summary()
+    typer.echo(
+        json.dumps(
+            {
+                k: summary[k]
+                for k in ("regressed", "server_signals", "diagnosis", "rule_diagnosis", "fix")
+            },
+            indent=1,
+        )
+    )
+    typer.echo(f"report: {report}")
+    if fail_on_regression and summary["regressed"]:
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

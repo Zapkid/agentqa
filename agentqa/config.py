@@ -224,10 +224,10 @@ class DispatchFile(BaseModel):
 
 class PerfDefaults(BaseModel):
     slos: dict[str, float]
-    shapes: dict[str, dict[str, float]]
-    warmup_s: float = 3
+    shapes: dict[str, list[list[float]]]
+    warmup_s: float = 1.5
     iterations: int = 3
-    reference_env: str = ""
+    data_setup_orders_cap: int = 200_000
 
 
 # ---------------------------------------------------------------- accessors

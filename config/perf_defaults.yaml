@@ -4,12 +4,14 @@ slos:
   p99_ms: 1200
   error_rate: 0.01
   min_rps: 20
+# Load shapes as steps [duration_s, users, spawn_rate]. Short by design: CI and the A/B benchmark
+# run several builds x 3 iterations on one host. Use --duration to lengthen soak runs.
 shapes:
-  smoke:  {users: 2,  spawn_rate: 2,   duration_s: 10}
-  load:   {users: 20, spawn_rate: 10,  duration_s: 30}
-  stress: {start_users: 5, step_users: 10, step_s: 8, max_users: 80}
-  spike:  {base_users: 5, spike_users: 50, base_s: 10, spike_s: 10, recover_s: 10}
-  soak:   {users: 10, spawn_rate: 5, duration_s: 600}
-warmup_s: 3
+  smoke:  [[8, 2, 2]]
+  load:   [[20, 20, 20]]
+  stress: [[6, 5, 50], [6, 15, 50], [6, 30, 50], [6, 50, 50]]
+  spike:  [[8, 5, 50], [8, 50, 100], [8, 5, 100]]
+  soak:   [[60, 10, 10]]
+warmup_s: 1.5            # discarded at the start of every step (ramp transitions)
 iterations: 3
-reference_env: "documented in docs/LIMITATIONS.md (hardware stated with any absolute number)"
+data_setup_orders_cap: 200000
