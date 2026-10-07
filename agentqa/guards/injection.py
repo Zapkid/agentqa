@@ -18,6 +18,9 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 from agentqa.models import Chunk
 from agentqa.obs import metrics, tracing
@@ -118,3 +121,33 @@ def refuse_tool(agent: str, tool: str, allowed: list[str]) -> str:
     metrics.inc("agentqa_guardrail_events_total", guardrail="tool_permission", action="refuse")
     tracing.event("guardrail.tool_permission", agent=agent, tool=tool, action="refuse")
     return f"tool {tool!r} is not available; allowed tools: {', '.join(allowed)}"
+
+
+class ClassifierVerdict(BaseModel):
+    is_injection: bool
+    confidence: float = Field(ge=0, le=1)
+    reason: str = Field(default="", max_length=300)
+
+
+def llm_classifier(client: Any) -> Classifier:
+    """Small-model second opinion for borderline chunks (heuristic score 1). Fails closed:
+    if the classifier errors, the chunk is quarantined."""
+    from agentqa.llm.prompts import load_prompt
+    from agentqa.llm.types import LLMError
+
+    prompt = load_prompt("injection_classifier")
+
+    def classify(text: str) -> tuple[bool, str]:
+        try:
+            res = client.complete(
+                prompt.render(payload=delimit("candidate", text[:3000])),
+                response_schema=ClassifierVerdict,
+                max_tokens=200,
+                metadata=prompt.metadata("injection_classifier"),
+            )
+        except LLMError as exc:
+            return True, f"classifier unavailable ({type(exc).__name__}); quarantined by default"
+        v: ClassifierVerdict = res.parsed
+        return v.is_injection, v.reason
+
+    return classify

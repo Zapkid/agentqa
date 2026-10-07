@@ -40,7 +40,7 @@ from agentqa.dispatch.features import difficulty, features
 from agentqa.dispatch.learned import RoutingStats
 from agentqa.dispatch.policy import Decision, choose_tier
 from agentqa.executor.runner import Executor
-from agentqa.guards import grounding, killswitch
+from agentqa.guards import grounding, injection, killswitch
 from agentqa.guards.budget import BudgetGuard
 from agentqa.guards.static_checks import check_code
 from agentqa.ingest.ingestor import ingest
@@ -93,6 +93,8 @@ class RunOutput:
     ledger: CostLedger
     delegation: DelegationLedger
     stats: dict[str, Any]
+    tests: list[ValidatedTest] = field(default_factory=list)
+    bundle: SpecBundle | None = None
 
 
 class Pipeline:
@@ -173,7 +175,8 @@ class Pipeline:
     # ------------------------------------------------------------------ tasks
 
     def t_ingest(self) -> SpecBundle:
-        bundle, counts = ingest(self.cfg.spec, self.cfg.docs, self.vstore)
+        classifier = injection.llm_classifier(self.router.for_role("injection_classifier"))
+        bundle, counts = ingest(self.cfg.spec, self.cfg.docs, self.vstore, classifier=classifier)
         self.bundle = bundle
         self.lessons = LessonStore(self.store, api_key=bundle.title)
         self.verifier.endpoints = bundle.endpoints
@@ -724,6 +727,8 @@ class Pipeline:
             self.ledger,
             self.delegation,
             stats,
+            self.validated_tests(graph),
+            self.bundle,
         )
 
     def finish(self, graph: TaskGraph, aborted: str | None, trace_id: str) -> RunReport:
@@ -824,6 +829,7 @@ class Pipeline:
                 )
             except (KillSwitchEngaged, BudgetExceeded) as exc:
                 report.aborted = report.aborted or f"{type(exc).__name__}: {exc}"
+            report.cost = self.ledger.summary()  # include the judge's tokens
         if self.lessons and not aborted:
             derive_lessons(self.lessons, self.run_id, self.rejections, findings)
         return report

@@ -221,6 +221,63 @@ def killswitch(
         typer.echo(f"kill switch engaged: {ks.engage(reason)}")
 
 
+@app.command("eval")
+def eval_cmd(
+    matrix: Annotated[bool, typer.Option(help="Profile matrix (strategy S3)")] = False,
+    profiles: Annotated[
+        str, typer.Option(help="Comma-separated profiles for --matrix")
+    ] = "simulated",
+    strategies: Annotated[bool, typer.Option(help="S0-S3 strategy comparison")] = False,
+    ablate: Annotated[bool, typer.Option(help="Also run S3 ablations")] = False,
+    seeds: Annotated[int, typer.Option(help="Runs per configuration (>=3 for variance)")] = 3,
+    memory: Annotated[
+        bool, typer.Option(help="Run 1 vs run 2 (lessons) vs run 3 (incremental)")
+    ] = False,
+    extras: Annotated[bool, typer.Option(help="Injection set + judge calibration")] = False,
+    perf: Annotated[bool, typer.Option(help="Performance A/B benchmark (P01-P06)")] = False,
+    perf_iterations: int = 3,
+    gate_check: Annotated[
+        bool, typer.Option("--gate", help="CI regression gate (replay mode)")
+    ] = False,
+    baseline: Path = REPO_ROOT / "evals/baselines/main.json",
+    tag: str = "",
+) -> None:
+    """Run eval suites and write results/<date>-<commit>.json and RESULTS.md."""
+    from agentqa.evals import run as ev
+    from agentqa.evals.report import render_results
+
+    if gate_check:
+        ok, detail = ev.gate(baseline)
+        typer.echo(json.dumps(detail, indent=1, default=str))
+        summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_file:
+            with open(summary_file, "a", encoding="utf-8") as fh:
+                fh.write("## AgentQA replay gate\n\n| check | ok |\n|---|---|\n")
+                fh.writelines(f"| {k} | {v} |\n" for k, v in detail["checks"].items())
+        raise typer.Exit(0 if ok else 1)
+    payload: dict[str, Any] = {}
+    if matrix:
+        payload["profiles"] = profiles.split(",")
+        payload["matrix"] = ev.profile_matrix(profiles.split(","), seeds, log=typer.echo)
+    if strategies:
+        payload["strategies"] = ev.strategy_comparison(seeds, ablate, log=typer.echo)
+    if memory:
+        payload["memory"] = ev.memory_effect(log=typer.echo)
+    if extras:
+        payload["injection"] = ev.injection_suite()
+        payload["judge_calibration"] = ev.judge_calibration()
+    func_path = ev.write_results(payload, tag or "functional") if payload else None
+    perf_path = None
+    if perf:
+        perf_path = ev.write_results(
+            ev.perf_benchmark(iterations=perf_iterations, log=typer.echo), "perf"
+        )
+    results = sorted((REPO_ROOT / "results").glob("*.json"))
+    func_path = func_path or next((p for p in reversed(results) if "perf" not in p.name), None)
+    perf_path = perf_path or next((p for p in reversed(results) if "perf" in p.name), None)
+    typer.echo(f"wrote {render_results(func_path, perf_path)}")
+
+
 perf_app = typer.Typer(help="Performance tests: workload model, load runs, A/B, diagnosis.")
 app.add_typer(perf_app, name="perf")
 
