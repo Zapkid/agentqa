@@ -1,0 +1,19 @@
+# List prices in USD per 1M tokens. "as_of" is the date the price was checked.
+# cost_usd_actual is 0 for free-tier models; cost_usd_list_equivalent always uses these list prices.
+# source notes are kept so a reviewer can re-verify. Re-check before quoting numbers externally.
+as_of: "2026-10-07"
+models:
+  # Anthropic (source: Anthropic API model table, cached 2026-09-25)
+  claude-opus-5-5:      {input: 4.00, output: 20.00, cached_input: 0.20, cache_write: 5.00, as_of: "2026-10-07"}
+  claude-sonnet-5-5:    {input: 2.00, output: 10.00, cached_input: 0.20, cache_write: 2.50, as_of: "2026-10-07"}
+  claude-haiku-4-5:     {input: 1.00, output: 5.00,  cached_input: 0.10, cache_write: 1.25, as_of: "2026-10-07"}
+  # Google Gemini (source: third-party pricing summaries; ai.google.dev was not reachable from the build host)
+  gemini-3.8-flash:      {input: 0.75, output: 3.75, cached_input: 0.075, cache_write: 0.75, as_of: "2026-10-07", verify_before_use: true, note: "introductory rate through 2026-12-31"}
+  gemini-3.5-flash-lite: {input: 0.30, output: 2.50, cached_input: 0.03, cache_write: 0.30, as_of: "2026-08-25", verify_before_use: true}
+  # OpenRouter ":free" models: zero actual cost; list-equivalent priced at the cheapest comparable paid tier.
+  "openai/gpt-oss-120b:free": {input: 0.10, output: 0.50, cached_input: 0.10, cache_write: 0.10, as_of: "2026-10-07", verify_before_use: true, note: "list-equivalent is an assumption; free tier is $0"}
+  "qwen/qwen3-coder:free":    {input: 0.20, output: 0.80, cached_input: 0.20, cache_write: 0.20, as_of: "2026-10-07", verify_before_use: true, note: "list-equivalent is an assumption; free tier is $0"}
+  # Simulated adapter (no network). Priced like the tier it stands in for, so cost arithmetic is exercised.
+  sim-cheap:  {input: 0.30, output: 2.50, cached_input: 0.03, cache_write: 0.30, as_of: "2026-10-07"}
+  sim-strong: {input: 4.00, output: 20.00, cached_input: 0.20, cache_write: 5.00, as_of: "2026-10-07"}
+  sim-judge:  {input: 2.00, output: 10.00, cached_input: 0.20, cache_write: 2.50, as_of: "2026-10-07"}

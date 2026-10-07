@@ -1,0 +1,79 @@
+[project]
+name = "agentqa"
+version = "0.1.0"
+description = "Autonomous, observable, guarded API test agent: OpenAPI spec + requirement docs in, risk-ranked tests, findings and an executive summary out."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "pydantic>=2.9",
+  "pyyaml>=6.0",
+  "httpx>=0.28",
+  "fastapi>=0.115",
+  "uvicorn>=0.32",
+  "typer>=0.15",
+  "structlog>=24.4",
+  "jinja2>=3.1",
+  "anthropic>=1.11",
+  "google-genai>=2.28",
+  "openai>=3.26",
+  "chromadb>=1.5",
+  "mcp>=2.3",
+  "opentelemetry-api>=1.45",
+  "opentelemetry-sdk>=1.45",
+  "opentelemetry-exporter-otlp-proto-http>=1.45",
+  "locust>=2.46",
+  "matplotlib>=3.9",
+  "psutil>=6.1",
+  "pytest>=8.3",
+  "ruff>=0.8",
+]
+
+[project.optional-dependencies]
+embeddings = ["fastembed>=0.9"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest-cov>=6.0",
+  "types-pyyaml>=6.0",
+  "types-psutil>=6.1",
+]
+
+[project.scripts]
+agentqa = "agentqa.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentqa", "target_api"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["runs", "evals/fixtures", ".cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["agentqa", "target_api"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "target_api/tests"]
+addopts = "-q -p no:cacheprovider"
+markers = [
+  "slow: starts subprocess servers or runs load (deselect with -m 'not slow')",
+]
+
+[tool.coverage.run]
+source = ["agentqa"]
+omit = ["agentqa/mcp/*", "agentqa/api/*", "agentqa/cli.py"]

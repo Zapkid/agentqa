@@ -1,0 +1,15 @@
+# Used only when the requirement docs do not state an SLO. Reported as ASSUMPTIONS.
+slos:
+  p95_ms: 500
+  p99_ms: 1200
+  error_rate: 0.01
+  min_rps: 20
+shapes:
+  smoke:  {users: 2,  spawn_rate: 2,   duration_s: 10}
+  load:   {users: 20, spawn_rate: 10,  duration_s: 30}
+  stress: {start_users: 5, step_users: 10, step_s: 8, max_users: 80}
+  spike:  {base_users: 5, spike_users: 50, base_s: 10, spike_s: 10, recover_s: 10}
+  soak:   {users: 10, spawn_rate: 5, duration_s: 600}
+warmup_s: 3
+iterations: 3
+reference_env: "documented in docs/LIMITATIONS.md (hardware stated with any absolute number)"

@@ -1,0 +1,34 @@
+budget:
+  max_tokens: 400000
+  max_usd_list_equivalent: 2.00
+  max_wall_clock_s: 1800
+  max_agent_steps: 400
+sandbox:
+  timeout_s: 120
+  memory_mb: 1024
+  cpu_s: 120
+  allow_mutations: false          # only read-only methods unless target declares sandbox: true
+  read_only_methods: [GET, HEAD, OPTIONS]
+  allowed_imports: [httpx, pytest, json, uuid, datetime, decimal, hmac, hashlib, time, re, math, typing, base64, concurrent.futures]
+  banned_calls: [open, exec, eval, compile, __import__, os.system, subprocess, socket]
+targets:
+  local-target:
+    base_url_pattern: "http://127.0.0.1:*"
+    sandbox: true
+  compose-target:
+    base_url_pattern: "http://target:8000"
+    sandbox: true
+injection:
+  quarantine: true
+  heuristic_threshold: 1          # number of heuristic hits that triggers quarantine on its own
+  classifier: true                # small-model classifier as a second opinion on borderline chunks
+load:
+  max_users: 200
+  max_rps: 2000
+  max_duration_s: 900
+  abort_error_rate: 0.5           # abort when the target fails more than half the requests
+  abort_host_cpu_pct: 95
+  abort_host_mem_pct: 90
+killswitch:
+  file: KILLSWITCH
+  env: AGENTQA_KILL

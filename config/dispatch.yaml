@@ -1,0 +1,26 @@
+# Every cost-saving mechanism toggles here so it can be ablated (agentqa eval --strategies --ablate).
+mechanisms:
+  deterministic_first: true      # Tier 0: spec-derived tests at 0 tokens
+  cascade: true                  # start cheap, verification-gated escalation
+  learned_routing: true          # Thompson sampling over (task_type, tier) outcomes
+  context_budgeting: true        # small top-k, token cap, minimal prompts
+  batching: true
+  dedupe: true
+  incremental: true              # diff-aware re-runs
+  cheap_verifiers_first: true    # judge only for ambiguous/high-severity
+  cluster_first_triage: true
+  budget_allocation: true
+  caching: true                  # provider-native prompt caching of static prefixes
+params:
+  batch_size: 4
+  dedupe_similarity: 0.92
+  retrieval_top_k: 3
+  retrieval_token_cap: 900
+  max_intents_per_endpoint: 6
+  strong_tier_floor: 0.05        # minimum exploration probability for T2 under learned routing
+  difficulty_t2_threshold: 0.6   # start at T2 when difficulty >= this (priors)
+  triage_escalate_confidence: 0.6
+  concurrency: 4
+# Static priors: which task types the LLM handles at all (others go to Tier 0 when deterministic_first is on)
+llm_categories: [auth/permission, state-transition, idempotency, money/precision, webhooks/signatures, time/timezone, data-leak, business-logic]
+t0_categories: [validation, boundary, contract-conformance, error-handling]

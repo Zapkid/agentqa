@@ -1,0 +1,40 @@
+# Role -> tier and tier -> model per profile. Model IDs checked 2026-10-07 (see pricing.yaml sources).
+# Rule enforced at load time: the judge's family differs from every generator model's family.
+as_of: "2026-10-07"
+families:
+  claude-opus-5-5: anthropic
+  claude-sonnet-5-5: anthropic
+  claude-haiku-4-5: anthropic
+  gemini-3.8-flash: google
+  gemini-3.5-flash-lite: google
+  "openai/gpt-oss-120b:free": openai-oss
+  "qwen/qwen3-coder:free": qwen
+  sim-cheap: sim-a
+  sim-strong: sim-a
+  sim-judge: sim-b
+roles: [planner, generator, triage, workload, perf_triage, injection_classifier, judge]
+profiles:
+  free:
+    tiers:
+      T1: {provider: gemini, model: gemini-3.5-flash-lite, fallbacks: [{provider: openrouter, model: "openai/gpt-oss-120b:free"}]}
+      T2: {provider: gemini, model: gemini-3.8-flash, fallbacks: [{provider: openrouter, model: "openai/gpt-oss-120b:free"}]}
+    roles: {planner: T2, generator: T1, triage: T1, workload: T1, perf_triage: T1, injection_classifier: T1}
+    judge: {provider: openrouter, model: "qwen/qwen3-coder:free"}
+  mixed:
+    tiers:
+      T1: {provider: gemini, model: gemini-3.5-flash-lite, fallbacks: [{provider: openrouter, model: "openai/gpt-oss-120b:free"}, {provider: anthropic, model: claude-haiku-4-5}]}
+      T2: {provider: anthropic, model: claude-sonnet-5-5, fallbacks: [{provider: gemini, model: gemini-3.8-flash}]}
+    roles: {planner: T2, generator: T1, triage: T1, workload: T1, perf_triage: T1, injection_classifier: T1}
+    judge: {provider: openrouter, model: "qwen/qwen3-coder:free"}
+  premium:
+    tiers:
+      T1: {provider: anthropic, model: claude-haiku-4-5, fallbacks: [{provider: anthropic, model: claude-sonnet-5-5}]}
+      T2: {provider: anthropic, model: claude-opus-5-5, fallbacks: [{provider: anthropic, model: claude-sonnet-5-5}]}
+    roles: {planner: T2, generator: T2, triage: T2, workload: T2, perf_triage: T2, injection_classifier: T1}
+    judge: {provider: gemini, model: gemini-3.8-flash}
+  simulated:
+    tiers:
+      T1: {provider: simulated, model: sim-cheap, fallbacks: []}
+      T2: {provider: simulated, model: sim-strong, fallbacks: []}
+    roles: {planner: T2, generator: T1, triage: T1, workload: T1, perf_triage: T1, injection_classifier: T1}
+    judge: {provider: simulated, model: sim-judge}

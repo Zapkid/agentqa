@@ -1,0 +1,15 @@
+# Local hooks only (no network needed to install). Install with: uv run pre-commit install
+# (pre-commit is optional; `make secrets` runs the same scan.)
+repos:
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: secret scan
+        entry: python scripts/secret_scan.py
+        language: system
+        pass_filenames: true
+      - id: ruff
+        name: ruff
+        entry: uv run ruff check
+        language: system
+        types: [python]
