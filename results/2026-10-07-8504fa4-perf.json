@@ -1,0 +1,142 @@
+{
+ "generated_at": "2026-10-07T18:52:03+00:00",
+ "commit": "8504fa4",
+ "perf_defect_recall": 1.0,
+ "bottleneck_accuracy": 1.0,
+ "rule_diagnosis_accuracy": 1.0,
+ "false_alarm_rate_clean_vs_clean": 0.0,
+ "noise_band": {
+  "p95_log_ratio": 0.3511,
+  "rps_log_ratio": 0.461,
+  "error_rate_abs": 0.005,
+  "rss_growth_mb_abs": 50.0,
+  "observed": {
+   "p95_log_ratio": 0.1756,
+   "rps_log_ratio": 0.2305,
+   "rss_growth_mb": 0.4
+  },
+  "clean_pairs": 1
+ },
+ "false_alarm_detail": {
+  "server_signals": [],
+  "flagged": [],
+  "rss_growth_delta_mb": -6.4
+ },
+ "confusion": {
+  "n_plus_one->n_plus_one": 1,
+  "missing_index->missing_index": 1,
+  "unbounded_payload->unbounded_payload": 1,
+  "blocking_handler->blocking_handler": 1,
+  "pool_exhaustion->pool_exhaustion": 1,
+  "memory_leak->memory_leak": 1
+ },
+ "cases": [
+  {
+   "defect": "P01",
+   "expected": "n_plus_one",
+   "regressed": true,
+   "diagnosis": "n_plus_one",
+   "rule_diagnosis": "n_plus_one",
+   "correct": true,
+   "triage_path": [
+    "T1:low_confidence",
+    "T2:ok"
+   ],
+   "slo_violations": [
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P01.png"
+  },
+  {
+   "defect": "P02",
+   "expected": "missing_index",
+   "regressed": true,
+   "diagnosis": "missing_index",
+   "rule_diagnosis": "missing_index",
+   "correct": true,
+   "triage_path": [
+    "T1:ok"
+   ],
+   "slo_violations": [
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P02.png"
+  },
+  {
+   "defect": "P03",
+   "expected": "unbounded_payload",
+   "regressed": true,
+   "diagnosis": "unbounded_payload",
+   "rule_diagnosis": "unbounded_payload",
+   "correct": true,
+   "triage_path": [
+    "T1:low_confidence",
+    "T2:ok"
+   ],
+   "slo_violations": [
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P03.png"
+  },
+  {
+   "defect": "P04",
+   "expected": "blocking_handler",
+   "regressed": true,
+   "diagnosis": "blocking_handler",
+   "rule_diagnosis": "blocking_handler",
+   "correct": true,
+   "triage_path": [
+    "T1:ok"
+   ],
+   "slo_violations": [
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P04.png"
+  },
+  {
+   "defect": "P05",
+   "expected": "pool_exhaustion",
+   "regressed": true,
+   "diagnosis": "pool_exhaustion",
+   "rule_diagnosis": "pool_exhaustion",
+   "correct": true,
+   "triage_path": [
+    "T1:ok"
+   ],
+   "slo_violations": [
+    "list_orders.error_rate",
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P05.png"
+  },
+  {
+   "defect": "P06",
+   "expected": "memory_leak",
+   "regressed": true,
+   "diagnosis": "memory_leak",
+   "rule_diagnosis": "memory_leak",
+   "correct": true,
+   "triage_path": [
+    "T1:ok"
+   ],
+   "slo_violations": [
+    "payment_webhook.min_rps"
+   ],
+   "chart": "/home/user/agentqa/.agentqa/evals/perf/chart-clean-vs-P06.png"
+  }
+ ],
+ "iterations": 3,
+ "agent_tokens": 9125,
+ "agent_cost_usd_list_equivalent": 0.011662,
+ "workload_path": [
+  "T1:ok"
+ ],
+ "report": "/home/user/agentqa/.agentqa/evals/perf/perf_report.md",
+ "host": {
+  "cpus": 4,
+  "platform": "Linux-6.18.44-fc-v77-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "target_cpu_pinning": "1 core",
+  "note": "shared build host; compare relatively (A/B), not absolutely"
+ }
+}

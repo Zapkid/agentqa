@@ -169,28 +169,41 @@ def slo_verdicts(run: PerfRun, workload: WorkloadSpec) -> list[dict[str, Any]]:
     return out
 
 
-def noise_band(a: PerfRun, b: PerfRun) -> dict[str, float]:
-    """Largest relative change between two runs of the same (clean) build, per metric, with a floor.
-    A defect must exceed this to count as a regression."""
-    sa, sb = summarize(a), summarize(b)
+NOISE_MULTIPLIER = 2.0  # one or two clean pairs underestimate the spread; leave a 2x margin
+FLOORS = {"p95_ms": math.log(1.25), "rps": math.log(1.15), "rss_growth_mb": 50.0}
+
+
+def noise_band(base: PerfRun, *repeats: PerfRun) -> dict[str, Any]:
+    """Largest change between the clean baseline and each clean repeat, per metric, times a margin
+    and with a floor. A candidate must exceed this to count as a regression."""
+    sa = summarize(base)
     worst: dict[str, float] = {"p95_ms": 0.0, "rps": 0.0}
-    for scen in set(sa) & set(sb):
-        for users in set(sa[scen]) & set(sb[scen]):
-            if min(sa[scen][users]["count"], sb[scen][users]["count"]) < MIN_SAMPLES:
-                continue  # too few requests for a stable percentile
-            for m in worst:
-                x, y = sa[scen][users][m], sb[scen][users][m]
-                if x > 0 and y > 0:
-                    worst[m] = max(worst[m], abs(math.log(y / x)))
-    ta, tb = target_signals(a), target_signals(b)
-    sig_noise = {k: abs(tb.get(k, 0) - ta.get(k, 0)) for k in ta}
-    floors = {"p95_ms": math.log(1.25), "rps": math.log(1.15)}
+    rss_noise = 0.0
+    ta = target_signals(base)
+    for rep in repeats:
+        sb = summarize(rep)
+        for scen in set(sa) & set(sb):
+            for users in set(sa[scen]) & set(sb[scen]):
+                if min(sa[scen][users]["count"], sb[scen][users]["count"]) < MIN_SAMPLES:
+                    continue  # too few requests for a stable percentile
+                for m in worst:
+                    x, y = sa[scen][users][m], sb[scen][users][m]
+                    if x > 0 and y > 0:
+                        worst[m] = max(worst[m], abs(math.log(y / x)))
+        rss_noise = max(
+            rss_noise, abs(target_signals(rep).get("rss_growth_mb", 0) - ta.get("rss_growth_mb", 0))
+        )
     return {
-        "p95_log_ratio": round(max(floors["p95_ms"], 1.5 * worst["p95_ms"]), 4),
-        "rps_log_ratio": round(max(floors["rps"], 1.5 * worst["rps"]), 4),
+        "p95_log_ratio": round(max(FLOORS["p95_ms"], NOISE_MULTIPLIER * worst["p95_ms"]), 4),
+        "rps_log_ratio": round(max(FLOORS["rps"], NOISE_MULTIPLIER * worst["rps"]), 4),
         "error_rate_abs": 0.005,
-        "rss_growth_mb_abs": round(max(15.0, 1.5 * sig_noise.get("rss_growth_mb", 0)), 2),
-        "observed": {k: round(v, 4) for k, v in worst.items()},  # type: ignore[dict-item]
+        "rss_growth_mb_abs": round(max(FLOORS["rss_growth_mb"], NOISE_MULTIPLIER * rss_noise), 2),
+        "observed": {
+            "p95_log_ratio": round(worst["p95_ms"], 4),
+            "rps_log_ratio": round(worst["rps"], 4),
+            "rss_growth_mb": round(rss_noise, 2),
+        },
+        "clean_pairs": len(repeats),
     }
 
 

@@ -752,7 +752,7 @@ class Pipeline:
         if run is None and aborted:
             for vt in tests:
                 self._uncover(vt.intent, f"not executed: run aborted: {aborted}")
-        if self.bundle and self.on("incremental") and not aborted:
+        if self.bundle and not aborted:  # always save; reuse is what the mechanism gates
             inc = savings.Incremental(self.store, self.bundle.title)
             by_ep: dict[str, list[ValidatedTest]] = {}
             for vt in tests:

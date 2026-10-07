@@ -274,10 +274,15 @@ def perf_benchmark(
     for i in range(noise_repeats):
         log(f"perf: clean repeat {i}")
         repeats.append(s.run_build(f"clean-repeat{i}", [], "stress", iterations, seed_orders))
-    band = analysis.noise_band(base, repeats[0])
-    false_alarms = [analysis.compare(base, r, band)["regressed"] for r in repeats[1:]] or [
-        analysis.compare(base, repeats[0], band)["regressed"]
-    ]
+    # band from all clean repeats but the last; the last is held out to measure false alarms
+    band = analysis.noise_band(base, *repeats[:-1])
+    held_out = analysis.compare(base, repeats[-1], band)
+    false_alarms = [held_out["regressed"]]
+    false_alarm_detail = {
+        "server_signals": held_out["server_signals"],
+        "flagged": [x for x in held_out["scenarios"] if x["regressed"]],
+        "rss_growth_delta_mb": held_out["rss_growth_delta_mb"],
+    }
     cases, results = [], []
     for pid, cls in truth.items():
         log(f"perf: {pid}")
@@ -312,6 +317,7 @@ def perf_benchmark(
         ),
         "false_alarm_rate_clean_vs_clean": round(sum(false_alarms) / len(false_alarms), 3),
         "noise_band": band,
+        "false_alarm_detail": false_alarm_detail,
         "confusion": confusion,
         "cases": cases,
         "iterations": iterations,

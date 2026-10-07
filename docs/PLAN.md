@@ -74,3 +74,19 @@ they decide what can be measured in this build and what must wait for a run with
 `make lint` (ruff + mypy) and `make test` pass; new code has unit tests; commit pushed to the
 working branch. Anything deferred or not implemented is listed in `docs/LIMITATIONS.md` the
 moment it is deferred, not at the end.
+
+## Status (end of the first build pass, 2026-10-07)
+
+| milestone | status | evidence |
+|---|---|---|
+| M1 scaffold + provider layer | done | `tests/test_llm_core.py`, `tests/test_adapters.py` (stub clients; no live calls, no keys) |
+| M2 target + benchmark truth | done | `target_api/tests/` (36 functional proofs, 6 perf measurements) |
+| M3 ingest, planner, T0, generator, grounding | done | `tests/test_ingest.py`, `tests/test_generation_guards.py` |
+| M4 executor, triage, report | done | `tests/test_executor.py`, `tests/test_triage_report.py`, `tests/test_pipeline_e2e.py` |
+| M5 supervisor + dispatcher part 1 | done | `tests/test_orchestrator_dispatch.py` |
+| M6 performance agent | done | `tests/test_perf.py`, `tests/test_perf_e2e.py` |
+| M7 dispatcher part 2 | done (self-consistency voting not implemented) | strategy/ablation results |
+| M8 observability | code + config done; stack not run (no Docker) | `deploy/`, ADR 0005 |
+| M9 evals + CI | done with simulated models; live matrix pending keys | `RESULTS.md`, `.github/workflows/` |
+| M10 MCP, UI, memory | done (no GUI-client screenshot) | `tests/test_mcp_server.py`, `tests/test_api.py` |
+| M11 polish | done; demo GIF and dashboard screenshots pending a machine with Docker | README, DEMO, LIMITATIONS, ENTERPRISE |

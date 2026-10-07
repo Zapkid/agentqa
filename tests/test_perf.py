@@ -148,3 +148,13 @@ def test_load_guard_allowlist() -> None:
         check_target_allowed("https://api.production.example.com", [[10, 5, 5]])
     with pytest.raises(LoadGuardViolation):
         check_target_allowed("http://127.0.0.1:8123", [[100000, 5, 5]])
+
+
+def test_noise_band_uses_all_pairs_and_memory_floor() -> None:
+    noisy = run("clean3", [300, 320, 330, 330], [80, 100, 140, 190], rss=80)
+    one = analysis.noise_band(CLEAN, CLEAN2)
+    both = analysis.noise_band(CLEAN, CLEAN2, noisy)
+    assert both["clean_pairs"] == 2 and both["p95_log_ratio"] > one["p95_log_ratio"]
+    assert (
+        one["rss_growth_mb_abs"] == 50.0 and both["rss_growth_mb_abs"] == 60.0
+    )  # 2 x 30 MB observed

@@ -249,6 +249,10 @@ def eval_cmd(
     ] = False,
     baseline: Path = REPO_ROOT / "evals/baselines/main.json",
     tag: str = "",
+    merge_into: Annotated[
+        Path | None,
+        typer.Option(help="Update this results JSON with the suites run now (others kept)"),
+    ] = None,
 ) -> None:
     """Run eval suites and write results/<date>-<commit>.json and RESULTS.md."""
     from agentqa.evals import run as ev
@@ -274,13 +278,23 @@ def eval_cmd(
     if extras:
         payload["injection"] = ev.injection_suite()
         payload["judge_calibration"] = ev.judge_calibration()
-    func_path = ev.write_results(payload, tag or "functional") if payload else None
-    perf_path = None
+    func_path: Path | None = None
+    if payload and merge_into is not None:
+        merged = json.loads(merge_into.read_text())
+        merged.update(payload)
+        merged.setdefault("merged_suites", []).append(
+            {"suites": sorted(payload), "commit": ev.commit_sha()}
+        )
+        merge_into.write_text(json.dumps(merged, indent=1, default=str), encoding="utf-8")
+        func_path = merge_into
+    else:
+        func_path = ev.write_results(payload, tag or "functional") if payload else None
+    perf_path: Path | None = None
     if perf:
         perf_path = ev.write_results(
             ev.perf_benchmark(iterations=perf_iterations, log=typer.echo), "perf"
         )
-    results = sorted((REPO_ROOT / "results").glob("*.json"))
+    results = sorted((REPO_ROOT / "results").glob("*.json"), key=lambda p: p.stat().st_mtime)
     func_path = func_path or next((p for p in reversed(results) if "perf" not in p.name), None)
     perf_path = perf_path or next((p for p in reversed(results) if "perf" in p.name), None)
     typer.echo(f"wrote {render_results(func_path, perf_path)}")

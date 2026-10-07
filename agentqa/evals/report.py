@@ -45,7 +45,13 @@ def pareto_chart(strategies: dict[str, Any], out: Path) -> Path:
         main = n in ("S0", "S1", "S2", "S3")
         color = ORANGE if n == "S3" else (BLUE if main else MUTED)
         ax.scatter(
-            [x], [y], s=70 if main else 30, color=color, zorder=3, edgecolor=SURFACE, linewidth=1.5
+            [x],
+            [y],
+            s=70 if main else 30,
+            color=color,
+            zorder=4 if main else 3,
+            edgecolor=SURFACE,
+            linewidth=1.5,
         )
         if main or y < frontier[-1][1] - 5:
             ax.annotate(
@@ -229,7 +235,9 @@ def render_results(
             f"- Perf-defect recall: **{p['perf_defect_recall']:.0%}**; bottleneck-classification accuracy "
             f"(model): **{p['bottleneck_accuracy']:.0%}**; rule-based diagnosis accuracy: {p['rule_diagnosis_accuracy']:.0%}",
             f"- False-alarm rate on clean-vs-clean repeats: **{p['false_alarm_rate_clean_vs_clean']:.0%}**; "
-            f"noise band: p95 ±{p['noise_band']['p95_log_ratio']:.2f} log-ratio, throughput ±{p['noise_band']['rps_log_ratio']:.2f}",
+            f"noise band (from {p['noise_band'].get('clean_pairs', 1)} clean pair(s), held-out repeat for the false-alarm test): "
+            f"p95 ±{p['noise_band']['p95_log_ratio']:.2f} log-ratio, throughput ±{p['noise_band']['rps_log_ratio']:.2f}, "
+            f"memory growth ±{p['noise_band']['rss_growth_mb_abs']:.0f} MB; held-out detail: {p.get('false_alarm_detail', 'n/a')}",
             f"- Agent cost for the whole benchmark: {p['agent_tokens']} tokens (${p['agent_cost_usd_list_equivalent']:.4f} list-equivalent)",
             "",
             "| defect | expected | regressed | diagnosis | rule check | escalation path |",
