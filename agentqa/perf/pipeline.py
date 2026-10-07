@@ -103,6 +103,7 @@ class PerfSession:
         test_type: str,
         iterations: int | None,
         seed_orders: int | None,
+        code_root: Path | None = None,
     ) -> PerfRun:
         wl = self.workload()
         orders = wl.data_setup_orders if seed_orders is None else seed_orders

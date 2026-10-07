@@ -339,6 +339,9 @@ def perf_ab(
     fail_on_regression: Annotated[
         bool, typer.Option(help="Exit 1 if the candidate regresses (CI gate)")
     ] = True,
+    baseline_root: Annotated[
+        Path | None, typer.Option(help="Checkout of the baseline code (e.g. main) for PR A/B")
+    ] = None,
 ) -> None:
     """Relative A/B: clean vs candidate back to back on this host, with a measured noise band."""
     from agentqa.perf import analysis
