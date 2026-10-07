@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets demo up down eval eval-live eval-replay perf-ab target replay-gate clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets demo up down eval eval-live eval-replay perf-ab target clean
 
 install:
 	$(UV) sync
@@ -35,7 +35,7 @@ secrets:
 target:
 	$(UV) run uvicorn target_api.app.main:app --port 8000
 
-# Full stack (target API, Phoenix, Collector, Prometheus, Grafana, cAdvisor) + one pipeline run.
+# Full stack: target API, Phoenix, Collector, Prometheus, Grafana, cAdvisor.
 up:
 	docker compose -f deploy/docker-compose.yml up -d --build
 

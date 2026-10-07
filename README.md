@@ -178,6 +178,102 @@ spelled out in [LIMITATIONS.md](docs/LIMITATIONS.md).
 6. An independent red-team set for prompt injection and a human-labelled judge calibration set.
 
 ## Repository map
-`agentqa/` (llm, agents, guards, ingest, executor, orchestrator, dispatch, perf, evals, obs, mcp, api) ·
-`prompts/` (versioned) · `config/` · `target_api/` · `deploy/` · `evals/` · `tests/` · `docs/` (PLAN,
-ADRs, ENTERPRISE, LIMITATIONS, DEMO, MCP, architecture) · `.github/workflows/` · `Makefile`.
+
+A request flows through the packages roughly in this order: `ingest` → `orchestrator` (with
+`dispatch`, `agents`, `guards`, `llm`) → `executor` → `agents/triage` → `agents/reporter`. `perf`,
+`evals`, `mcp` and `api` sit on top of that pipeline.
+
+```text
+agentqa/                 the Python package (installed as the `agentqa` and `agentqa-mcp` commands)
+├── cli.py               Typer CLI: run, report, replay, runs, killswitch, serve, eval, perf run/ab
+├── config.py            typed loaders for config/*.yaml (checks the judge's family differs from the generators')
+├── models.py            pydantic artifacts passed between stages: Endpoint, SpecBundle, TestIntent,
+│                        GeneratedTest, ValidatedTest, RunResult, Evidence, TriageVerdict, Finding
+├── store.py             SQLite store: runs, task checkpoints, delegation ledger, routing stats, lessons
+├── memory.py            lessons learned from earlier runs, fed back into later ones
+├── target_config.py     loads a target description (spec, docs, sandbox flag, role tokens, webhook signing)
+├── llm/                 model access
+│   ├── router.py        LLMClient.complete: tier/role → model, cache, rate limit, retries, fallback,
+│   │                    circuit breaker, schema-repair retries, cost ledger
+│   ├── adapters/        Anthropic, Gemini, OpenRouter (OpenAI SDK) and a fake adapter for tests
+│   ├── simulated.py     deterministic simulated models with declared error rates (ADR 0003)
+│   ├── cache.py         disk cache (off / read_write / replay_only) used for deterministic replay
+│   ├── normalize.py     strips run-specific noise (paths, ids) from prompts so replay hits the cache
+│   ├── prompts.py       loads the versioned prompts in prompts/
+│   ├── pricing.py       cost ledger: actual and list-equivalent USD
+│   └── ratelimit.py, resilience.py, types.py
+├── ingest/              no-LLM ingestion: OpenAPI parsing, chunking, injection scan, local embeddings,
+│                        BM25, Chroma vector store and hybrid retrieval (ADR 0004)
+├── agents/
+│   ├── synthesizer.py   Tier 0: tests derived from the spec by code, zero tokens
+│   ├── planner.py       risk-ranked test plan from the spec plus retrieved requirement chunks
+│   ├── risk.py          risk scoring used to rank intents
+│   ├── generator.py     writes pytest tests for intents (single and batched)
+│   ├── triage.py        clusters failures, one triage call per cluster, evidence bundle, curl repro
+│   └── reporter.py      technical report (Markdown/HTML), executive summary, judge scoring
+├── guards/              grounding (every path/field/status must exist in the spec), static checks
+│                        (ruff, import allowlist, banned calls), prompt injection (heuristics + classifier),
+│                        token/cost budget, kill switch, secret/PII redaction
+├── executor/            runs generated tests in a sandbox: per-test files, host allowlist, method
+│                        guard, resource limits, redacted request/response log, flaky reruns
+├── orchestrator/        graph.py: task DAG supervisor with checkpoints and failure isolation;
+│                        pipeline.py: the stages of one run, wired into that DAG
+├── dispatch/            cost intelligence: difficulty features, tier policy (static, cascade, Thompson
+│                        sampling), verification-gated cascade, delegation ledger, strategies S0–S3
+├── perf/                workload model → Locust run → knee/SLO/noise band/A-B analysis → bottleneck
+│                        triage and charts
+├── evals/               ground truth by differential runs (ADR 0007), scoring harness, the experiments
+│                        behind RESULTS.md, the CI gate and the RESULTS.md renderer
+├── obs/                 OpenTelemetry tracing (GenAI + OpenInference attributes), metrics, structlog
+├── mcp/server.py        MCP server: ingest_spec, plan_tests, run_suite, triage_run, get_report,
+│                        list_runs, perf_ab, plus report resources
+├── api/                 FastAPI web UI (runs, findings, timeline, delegation ledger, scoreboard)
+└── sim/                 the rule libraries behind the simulated models
+
+prompts/                 versioned prompt templates (front matter + system/user sections), one per role
+config/                  providers, model profiles (free/mixed/premium/simulated), pricing with
+                         "as of" dates, guardrails, dispatch thresholds, perf defaults
+target_api/              the system under test
+├── app/                 FastAPI + SQLite Orders and Invoicing API; bugs.py switches seeded bugs on
+├── bugs.yaml            the 12 functional bugs (B01–B12) with category, endpoint and expected behaviour
+├── perf_bugs.yaml       the 6 performance defects (P01–P06) with bottleneck class and signature
+├── docs/                requirement documents (01–05) and poisoned.md, the injection test
+├── openapi.json         the spec, identical for every build (regenerate with export_openapi.py)
+├── launcher.py          starts a build in-process with chosen bugs (used by evals and the demo)
+├── agentqa_target.yaml  target description used by the CLI
+└── tests/               self-checks proving every seeded bug and perf defect exists and is isolated
+deploy/                  docker-compose stack: target API, OTel Collector, Phoenix, Prometheus, cAdvisor,
+                         Grafana (provisioned dashboards), Dockerfile for the target
+evals/
+├── datasets/            adversarial injection set and judge calibration set (self-authored)
+├── baselines/main.json  thresholds the CI gate compares against
+└── fixtures/llm_cache/  recorded model responses that make the CI replay gate deterministic
+results/                 raw eval output (JSON, named date-commit-kind) and charts; RESULTS.md is
+                         generated from these files
+docs/                    PLAN.md (milestones and status), architecture.md, ADRs 0001–0008,
+                         LIMITATIONS.md, ENTERPRISE.md, DEMO.md (5-minute script), MCP.md (client setup)
+scripts/                 demo.py (`make demo`) and secret_scan.py (pre-commit and CI)
+tests/                   unit and end-to-end tests for every package (fixtures/petstore.yaml is a
+                         second spec used to show nothing is hard-wired to the demo API)
+.github/workflows/       ci.yml: lint, types, tests, secret scan, replay gate, perf A/B smoke;
+                         eval-live.yml: manual real-model eval
+```
+
+Root files: `pyproject.toml` (dependencies, ruff, mypy, pytest settings), `uv.lock`, `Makefile`,
+`.env.example` (every variable, no values), `.pre-commit-config.yaml` (ruff and secret scan),
+`RESULTS.md` (generated).
+
+Make targets:
+
+| target | what it does |
+|---|---|
+| `make install` | `uv sync` |
+| `make lint` · `make fmt` · `make typecheck` | ruff + mypy · auto-fix and format · mypy only |
+| `make test` · `make test-fast` · `make cov` | full suite · skip tests marked slow · with coverage |
+| `make secrets` | secret scan over tracked files |
+| `make target` | run the demo API on :8000 (`BUGS=B01 PERF_BUGS=P01 make target`) |
+| `make up` · `make down` | start or stop the Docker observability stack |
+| `make demo` | the 5-minute demo (functional run plus perf A/B) |
+| `make eval` · `make eval-replay` · `make eval-live` | simulated matrix · CI gate from recorded responses · real models |
+| `make perf-ab` | short perf A/B smoke test |
+| `make clean` | remove local run data and caches |
