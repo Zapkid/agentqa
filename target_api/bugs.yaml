@@ -1,0 +1,74 @@
+# Seeded functional defects. Toggle with BUGS=B01,B03,... (empty = clean build).
+# Each entry is proven by a hand-written failing test in target_api/tests/test_seeded_bugs.py.
+- id: B01
+  category: validation
+  endpoint: POST /orders
+  description: "POST /orders accepts a negative item quantity"
+  expected: "422 when any item quantity < 1 (quantity must be 1..1000)"
+  severity: high
+- id: B02
+  category: boundary
+  endpoint: GET /orders
+  description: "Pagination off-by-one: page 2 skips the first item of that page"
+  expected: "page N returns items (N-1)*page_size .. N*page_size-1 of the ordered list"
+  severity: medium
+- id: B03
+  category: money/precision
+  endpoint: POST /orders
+  description: "Line totals use binary float rounding, so some totals are off by 0.01"
+  expected: "line_total = unit_price * quantity rounded half-up to cents (decimal arithmetic)"
+  severity: high
+- id: B04
+  category: auth/permission
+  endpoint: GET /orders/{order_id}
+  description: "IDOR: a customer can read another customer's order by id"
+  expected: "404 for a customer requesting an order they do not own"
+  severity: critical
+- id: B05
+  category: auth/permission
+  endpoint: PATCH /products/{product_id}
+  description: "Price change allowed for non-admin roles"
+  expected: "403 for staff and customer tokens"
+  severity: critical
+- id: B06
+  category: idempotency
+  endpoint: POST /orders
+  description: "Repeated Idempotency-Key creates duplicate orders"
+  expected: "same Idempotency-Key returns the original order (same id), no new order"
+  severity: high
+- id: B07
+  category: state-transition
+  endpoint: POST /orders/{order_id}/ship
+  description: "A cancelled order can be moved to shipped"
+  expected: "409 when shipping an order whose status is not 'paid'"
+  severity: high
+- id: B08
+  category: error-handling
+  endpoint: GET /orders/{order_id}
+  description: "Malformed UUID returns 500 instead of 422"
+  expected: "422 for an order_id that is not a UUID"
+  severity: medium
+- id: B09
+  category: contract-conformance
+  endpoint: GET /orders
+  description: "Unknown status filter silently returns all rows instead of 422"
+  expected: "422 for a status value outside the documented enum"
+  severity: medium
+- id: B10
+  category: data-leak
+  endpoint: GET /customers/{customer_id}
+  description: "Response exposes internal field internal_risk_score, not in the spec"
+  expected: "response contains only documented Customer fields"
+  severity: high
+- id: B11
+  category: webhooks/signatures
+  endpoint: POST /webhooks/payment
+  description: "Payment webhook accepts an invalid HMAC signature"
+  expected: "401 when X-Signature is not the HMAC-SHA256 of the raw body"
+  severity: critical
+- id: B12
+  category: time/timezone
+  endpoint: GET /orders
+  description: "created_from ignores the UTC offset of timezone-aware timestamps"
+  expected: "an offset timestamp is converted to UTC before comparison"
+  severity: medium

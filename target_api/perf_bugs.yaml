@@ -1,0 +1,32 @@
+# Seeded performance defects. Toggle with PERF_BUGS=P01,... (empty = clean build).
+# Each is proven by a hand-written measurement in target_api/tests/test_perf_defects.py.
+- id: P01
+  class: n_plus_one
+  endpoint: GET /orders
+  description: "GET /orders issues one extra query per order for customer and items"
+  signature: "db queries per request grow with page size; latency grows with page size"
+- id: P02
+  class: missing_index
+  endpoint: GET /orders
+  description: "created_from and status filters do a full table scan (indexes not created)"
+  signature: "latency grows with row count; DB time dominates the request"
+- id: P03
+  class: unbounded_payload
+  endpoint: GET /orders
+  description: "page_size has no upper cap"
+  signature: "response size and latency spike with large page_size"
+- id: P04
+  class: blocking_handler
+  endpoint: POST /webhooks/payment
+  description: "Payment webhook does a synchronous slow call inside the event loop"
+  signature: "throughput plateaus early while CPU stays low; all endpoints slow down"
+- id: P05
+  class: pool_exhaustion
+  endpoint: "*"
+  description: "Tiny DB connection pool (1 connection, short acquire timeout)"
+  signature: "error-rate cliff (503) past a concurrency threshold"
+- id: P06
+  class: memory_leak
+  endpoint: "*"
+  description: "Unbounded in-process cache grows on every request and is scanned linearly"
+  signature: "memory and latency drift upward during a soak"
