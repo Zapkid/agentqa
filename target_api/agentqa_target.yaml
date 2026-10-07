@@ -1,0 +1,17 @@
+# How AgentQA talks to this target. Tokens here are sandbox fixtures, not secrets.
+name: orders-api
+spec: target_api/openapi.json
+docs: target_api/docs
+sandbox: true                 # mutations allowed (declared sandbox target)
+auth:
+  scheme: bearer
+  roles:
+    admin: {token: tok-admin}
+    staff: {token: tok-staff}
+    customer: {token: tok-alice, customer_id: 328c7d18-035f-5df3-a6e9-eec5dd5ca6e5}
+    other_customer: {token: tok-bob, customer_id: c9e46a8c-2a23-5a1f-8614-f36bac3e55ac}
+webhook:
+  header: X-Signature
+  algorithm: hmac-sha256
+  secret_env: TARGET_WEBHOOK_SECRET
+  secret_default: change-me-local-only

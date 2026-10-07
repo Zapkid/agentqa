@@ -1,0 +1,176 @@
+"""F2 Planner agent: one endpoint -> risk-ranked TestIntents that cite their sources.
+
+Retrieval is per endpoint with a small top-k and a character cap (context budgeting). The model's
+output is validated in code: unknown source refs are dropped (an intent with none left is
+dropped and counted as a planning grounding violation), categories are restricted to the allowed
+set, risk is clamped to the rule-based score +/- 1, and the plan is capped per endpoint.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from typing import Any, cast
+
+from agentqa.agents.risk import clamp_risk
+from agentqa.guards.injection import delimit
+from agentqa.ingest.vectorstore import VectorStore
+from agentqa.llm.prompts import load_prompt
+from agentqa.llm.router import LLMClient
+from agentqa.models import Chunk, Endpoint, PlannerOutput, SpecBundle, TestIntent
+from agentqa.obs import tracing
+
+
+@dataclass
+class PlanStats:
+    proposed: int = 0
+    kept: int = 0
+    dropped_bad_refs: int = 0
+    dropped_bad_category: int = 0
+    dropped_cap: int = 0
+    retrieved: list[str] = field(default_factory=list)
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _field_names(schema: dict[str, Any], depth: int = 0) -> list[str]:
+    if depth > 2:
+        return []
+    if schema.get("type") == "array":
+        return _field_names(schema.get("items", {}), depth + 1)
+    out = []
+    for name, sub in schema.get("properties", {}).items():
+        out.append(name)
+        out += _field_names(sub, depth + 1)
+    return list(dict.fromkeys(out))
+
+
+def retrieval_queries(ep: Endpoint) -> list[str]:
+    """Two queries: what the endpoint is (path words, summary, description) and the vocabulary of
+    its fields (parameters, request and response properties)."""
+    words = " ".join(re.findall(r"[a-z]+", ep.path.lower()))
+    fields = [p.name for p in ep.params if p.location != "header"] + list(ep.body_fields())
+    items = (ep.request_schema or {}).get("properties", {}).get("items", {}).get("items", {})
+    fields += list(items.get("properties", {}))
+    for code, schema in ep.responses.items():
+        if code.startswith("2") and schema:
+            fields += _field_names(schema)
+    return [f"{ep.method} {words} {ep.summary} {ep.description}", f"{words} {' '.join(fields)}"]
+
+
+class Planner:
+    def __init__(
+        self,
+        bundle: SpecBundle,
+        store: VectorStore,
+        *,
+        top_k: int = 4,
+        char_cap: int = 3600,
+        max_intents: int = 6,
+    ) -> None:
+        self.bundle = bundle
+        self.store = store
+        self.top_k = top_k
+        self.char_cap = char_cap
+        self.max_intents = max_intents
+        self.chunks = {c.id: c for c in bundle.chunks}
+        self.prompt = load_prompt("planner")
+
+    def retrieve(self, ep: Endpoint) -> list[Chunk]:
+        query = retrieval_queries(ep)
+        with tracing.span("retrieve planner", "retrieval", **{"agentqa.endpoint": ep.id}) as sp:
+            hits = self.store.hybrid(self.bundle.spec_id, query, k=self.top_k, kind="doc")
+            out: list[Chunk] = []
+            used = 0
+            for cid, _score in hits:
+                chunk = self.chunks.get(cid)
+                if chunk is None or chunk.quarantined:
+                    continue
+                if used + len(chunk.text) > self.char_cap:
+                    remaining = self.char_cap - used
+                    if remaining < 200:
+                        break
+                    chunk = chunk.model_copy(update={"text": chunk.text[:remaining] + " [...]"})
+                used += len(chunk.text)
+                out.append(chunk)
+            sp.set_attribute("agentqa.retrieved", [c.id for c in out])
+            return out
+
+    def plan(
+        self,
+        ep: Endpoint,
+        client: LLMClient,
+        categories: list[str],
+        *,
+        lessons: str = "",
+        task_id: str | None = None,
+    ) -> tuple[list[TestIntent], PlanStats]:
+        stats = PlanStats()
+        spec_chunk = self.chunks[f"spec:{ep.id}"]
+        docs = self.retrieve(ep)
+        stats.retrieved = [c.id for c in docs]
+        allowed_refs = {spec_chunk.id, *stats.retrieved}
+        payload = {
+            "endpoint_id": ep.id,
+            "spec_chunk": {"id": spec_chunk.id, "text": spec_chunk.text},
+            "document_ids": stats.retrieved,
+            "categories": categories,
+            "max_intents": self.max_intents,
+            "other_endpoints": [e.id for e in self.bundle.endpoints if e.id != ep.id],
+        }
+        messages = self.prompt.render(
+            payload=json.dumps(payload, indent=1),
+            documents="\n".join(delimit(c.id, c.text) for c in docs) or "(none retrieved)",
+            lessons=lessons,
+        )
+        with tracing.span(
+            f"agent planner {ep.id}",
+            "agent",
+            **{"agentqa.agent": "planner", "agentqa.endpoint": ep.id},
+        ):
+            result = client.complete(
+                messages,
+                response_schema=PlannerOutput,
+                max_tokens=1800,
+                metadata=self.prompt.metadata("planner", task_id=task_id),
+            )
+        out = cast(PlannerOutput, result.parsed)
+        intents: list[TestIntent] = []
+        seen_titles: set[str] = set()
+        for i, pi in enumerate(out.intents):
+            stats.proposed += 1
+            refs = [r for r in pi.source_refs if r in allowed_refs]
+            if not refs:
+                stats.dropped_bad_refs += 1
+                tracing.event(
+                    "plan.dropped_intent", reason="no valid source refs", refs=pi.source_refs
+                )
+                continue
+            if pi.category not in categories:
+                stats.dropped_bad_category += 1
+                continue
+            if pi.title.lower() in seen_titles:
+                continue
+            if len(intents) >= self.max_intents:
+                stats.dropped_cap += 1
+                continue
+            seen_titles.add(pi.title.lower())
+            intents.append(
+                TestIntent(
+                    id=f"{_slug(ep.method)}-{_slug(ep.path)}-{_slug(pi.category)}-{i}"[:90],
+                    endpoint=ep.id,
+                    category=pi.category,
+                    title=pi.title,
+                    risk=clamp_risk(pi.risk, ep, pi.category),
+                    rationale=pi.rationale,
+                    preconditions=pi.preconditions,
+                    expected_behavior=pi.expected_behavior,
+                    source_refs=refs,
+                    origin="llm",
+                )
+            )
+        stats.kept = len(intents)
+        return intents, stats

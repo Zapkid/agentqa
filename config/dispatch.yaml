@@ -14,8 +14,8 @@ mechanisms:
 params:
   batch_size: 4
   dedupe_similarity: 0.92
-  retrieval_top_k: 3
-  retrieval_token_cap: 900
+  retrieval_top_k: 5
+  retrieval_token_cap: 1200
   max_intents_per_endpoint: 6
   strong_tier_floor: 0.05        # minimum exploration probability for T2 under learned routing
   difficulty_t2_threshold: 0.6   # start at T2 when difficulty >= this (priors)

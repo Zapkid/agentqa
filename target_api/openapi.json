@@ -1192,6 +1192,45 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "amount": {
+                    "title": "Amount",
+                    "type": "string"
+                  },
+                  "event_id": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "title": "Event Id",
+                    "type": "string"
+                  },
+                  "order_id": {
+                    "format": "uuid",
+                    "title": "Order Id",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "'succeeded' or 'failed'",
+                    "title": "Status",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "event_id",
+                  "order_id",
+                  "amount",
+                  "status"
+                ],
+                "title": "PaymentEvent",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

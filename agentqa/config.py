@@ -194,8 +194,8 @@ class GuardrailsFile(BaseModel):
 class DispatchParams(BaseModel):
     batch_size: int = 4
     dedupe_similarity: float = 0.92
-    retrieval_top_k: int = 3
-    retrieval_token_cap: int = 900
+    retrieval_top_k: int = 5
+    retrieval_token_cap: int = 1200
     max_intents_per_endpoint: int = 6
     strong_tier_floor: float = 0.05
     difficulty_t2_threshold: float = 0.6

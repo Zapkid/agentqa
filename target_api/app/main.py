@@ -657,6 +657,12 @@ def get_order_invoice(order_id: UuidPath, p: Auth) -> Any:
 @app.post(
     "/webhooks/payment",
     tags=["webhooks"],
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": PaymentEvent.model_json_schema()}},
+        }
+    },
     responses={
         200: {"description": "Processed (or duplicate event ignored)"},
         401: {"model": Error, "description": "Invalid signature"},

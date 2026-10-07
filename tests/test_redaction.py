@@ -2,7 +2,7 @@ from agentqa.guards.redaction import REDACTED, find_secrets, redact, redact_text
 
 
 def test_redacts_keys_and_pii() -> None:
-    text = "key sk-ant-abcdefghijklmnop123 mail bob@example.com Bearer abc.def.ghi123"
+    text = "key sk-ant-abcdefghijklmnop123 mail bob@example.com Bearer abc.def.ghi123"  # secret-scan: allow
     out = redact_text(text)
     assert "sk-ant" not in out and "bob@example.com" not in out and "abc.def" not in out
     assert out.count(REDACTED) == 3
