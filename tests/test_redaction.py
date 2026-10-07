@@ -19,3 +19,8 @@ def test_redacts_sensitive_keys_recursively() -> None:
 def test_find_secrets() -> None:
     assert find_secrets("x = 'AIza" + "A" * 35 + "'") == ["google_api_key"]
     assert find_secrets("nothing here") == []
+
+
+def test_card_numbers_need_luhn() -> None:
+    assert redact_text("card 4111 1111 1111 1111") == f"card {REDACTED}"
+    assert redact_text("run-20261007-172453-3b9ca9") == "run-20261007-172453-3b9ca9"

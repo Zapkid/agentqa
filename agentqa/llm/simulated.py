@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -100,6 +101,10 @@ class SimulatedAdapter:
         import agentqa.sim  # noqa: F401
 
         self._by_system = _system_index()
+        self._seen_prefixes: set[str] = set()
+        # Repetition seed for evals (N>=3 runs need run-to-run variance). Runs that compare
+        # seeds must use a cold cache, since the seed is not part of the cache key.
+        self.seed = os.environ.get("AGENTQA_SIM_SEED", "0")
 
     def raw_complete(
         self,
@@ -118,7 +123,7 @@ class SimulatedAdapter:
         skill = SKILL.get(model)
         if skill is None:
             raise ProviderError(f"simulated: unknown model {model}")
-        digest = hashlib.sha256((model + messages_text(messages)).encode()).hexdigest()
+        digest = hashlib.sha256((self.seed + model + messages_text(messages)).encode()).hexdigest()
         rng = random.Random(int(digest[:16], 16))
         req = SimRequest(
             model,
@@ -145,13 +150,20 @@ class SimulatedAdapter:
                 text = text[: max(1, len(text) // 2)]
             raw = RawResponse(text=text)
         prefix_tokens = estimate_tokens(system)
+        # Simulated provider-native prompt caching: a static prefix marked cache_prefix is billed
+        # as cached input the second time the same model sees it (as Anthropic/Gemini do).
+        cached = 0
+        if messages and messages[0].cache_prefix:
+            key = hashlib.sha256((model + system).encode()).hexdigest()
+            if key in self._seen_prefixes:
+                cached = prefix_tokens
+            self._seen_prefixes.add(key)
         usage = Usage(
             input_tokens=estimate_tokens(messages_text(messages)),
             output_tokens=estimate_tokens(
                 raw.text + json.dumps([t.arguments for t in raw.tool_calls])
             ),
-            cached_input_tokens=0,
+            cached_input_tokens=cached,
         )
-        if usage.input_tokens < prefix_tokens:
-            usage.input_tokens = prefix_tokens
+        usage.input_tokens = max(usage.input_tokens, prefix_tokens, cached)
         return raw.model_copy(update={"usage": usage, "response_model": model})

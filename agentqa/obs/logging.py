@@ -41,6 +41,8 @@ def configure_logging(level: str = "INFO") -> None:
     if _configured:
         return
     logging.basicConfig(format="%(message)s", stream=sys.stderr, level=level)
+    for noisy in ("httpx", "httpcore", "chromadb"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

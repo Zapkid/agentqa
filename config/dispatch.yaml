@@ -13,7 +13,7 @@ mechanisms:
   caching: true                  # provider-native prompt caching of static prefixes
 params:
   batch_size: 4
-  dedupe_similarity: 0.92
+  dedupe_similarity: 0.85        # measured (hashing embedder): paraphrase dups >= 0.899, distinct intents <= 0.698
   retrieval_top_k: 5
   retrieval_token_cap: 1200
   max_intents_per_endpoint: 6

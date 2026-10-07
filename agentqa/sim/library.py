@@ -26,6 +26,7 @@ class Rule:
     requests: tuple[tuple[str, str, tuple[str, ...], tuple[int, ...]], ...]
     code: str
     preconditions: tuple[str, ...] = field(default_factory=tuple)
+    t0_overlap: bool = False  # mechanically derivable from the spec (Tier 0 covers it when enabled)
 
 
 ORDER = '{"items": [{"product_id": product_id, "quantity": 1}]}'
@@ -154,7 +155,7 @@ def TEST_NAME(client, auth, customer_id):
         (("GET", "/orders", (), (200,)), ("GET", "/orders/{order_id}", (), (404,))),
         """
 def TEST_NAME(client, auth, find_id, other_customer_id):
-    ids = find_id("/orders", auth["admin"], predicate=lambda o: o["customer_id"] == other_customer_id)
+    ids = find_id("/orders?page_size=100", auth["admin"], predicate=lambda o: o["customer_id"] == other_customer_id)
     if not ids:
         pytest.skip("no order owned by another customer")
     r = client.get(f"/orders/{ids[0]}", headers=auth["customer"])
@@ -175,9 +176,12 @@ def TEST_NAME(client, auth, find_id, other_customer_id):
         """
 def TEST_NAME(client, auth):
     product = client.get("/products", headers=auth["admin"]).json()[0]
-    for role in ("staff", "customer"):
-        r = client.patch(f"/products/{product['id']}", json={"price": "0.01"}, headers=auth[role])
-        assert r.status_code == 403, f"{role} changed a price: {r.status_code}"
+    try:
+        for role in ("staff", "customer"):
+            r = client.patch(f"/products/{product['id']}", json={"price": "0.01"}, headers=auth[role])
+            assert r.status_code == 403, f"{role} changed a price: {r.status_code}"
+    finally:  # leave the shared catalogue as we found it
+        client.patch(f"/products/{product['id']}", json={"price": product["price"]}, headers=auth["admin"])
 """,
     ),
     Rule(
@@ -363,6 +367,82 @@ def TEST_NAME(client, auth, find_id):
     r = client.post(f"/orders/{ids[0]}/cancel", headers=auth["admin"])
     assert r.status_code == 409, f"shipped order cancelled: {r.status_code}"
 """,
+    ),
+]
+RULES += [
+    Rule(
+        "pagination",
+        "GET",
+        "/orders",
+        ("page 2", "nothing skipped"),
+        "boundary",
+        "Page 2 contains exactly the items after page 1",
+        "page 2 with page_size 10 equals items 11-20 of a larger first page",
+        3,
+        0.4,
+        (("GET", "/orders", ("page", "page_size"), (200,)),),
+        """
+def TEST_NAME(client, auth):
+    full = client.get("/orders", params={"page": 1, "page_size": 30}, headers=auth["admin"]).json()["items"]
+    if len(full) < 20:
+        pytest.skip("not enough orders")
+    page2 = client.get("/orders", params={"page": 2, "page_size": 10}, headers=auth["admin"]).json()["items"]
+    assert [o["id"] for o in page2] == [o["id"] for o in full[10:20]]
+""",
+        t0_overlap=True,
+    ),
+    Rule(
+        "status_filter",
+        "GET",
+        "/orders",
+        ("any other value is a client error",),
+        "contract-conformance",
+        "An unknown status filter is rejected",
+        "422 for status=teleported",
+        3,
+        0.2,
+        (("GET", "/orders", ("status",), (422,)),),
+        """
+def TEST_NAME(client, auth):
+    r = client.get("/orders", params={"status": "teleported"}, headers=auth["admin"])
+    assert r.status_code == 422, f"unknown status accepted: {r.status_code}"
+""",
+        t0_overlap=True,
+    ),
+    Rule(
+        "page_size_cap",
+        "GET",
+        "/orders",
+        ("may not exceed",),
+        "boundary",
+        "page_size above 100 is rejected",
+        "422 for page_size=101",
+        2,
+        0.2,
+        (("GET", "/orders", ("page_size",), (422,)),),
+        """
+def TEST_NAME(client, auth):
+    r = client.get("/orders", params={"page_size": 101}, headers=auth["admin"])
+    assert r.status_code == 422, f"page_size 101 accepted: {r.status_code}"
+""",
+    ),
+    Rule(
+        "malformed_id",
+        "GET",
+        "/orders/{order_id}",
+        ("not a uuid",),
+        "error-handling",
+        "A malformed order id is a client error, not a server error",
+        "422 for /orders/not-a-uuid",
+        3,
+        0.2,
+        (("GET", "/orders/{order_id}", (), (422, 404)),),
+        """
+def TEST_NAME(client, auth):
+    r = client.get("/orders/not-a-uuid", headers=auth["admin"])
+    assert r.status_code in (404, 422), f"malformed id gave {r.status_code}"
+""",
+        t0_overlap=True,
     ),
 ]
 RULES_BY_KEY = {r.key: r for r in RULES}

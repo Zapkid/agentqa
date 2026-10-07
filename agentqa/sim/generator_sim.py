@@ -88,6 +88,11 @@ def _write(req: SimRequest, intent: dict[str, Any], name: str, feedback: bool) -
     rule = RULES_BY_TITLE.get(intent.get("title", "").lower())
     out = _render(rule, name) if rule else _generic(intent, name)
     difficulty = rule.difficulty if rule else 0.9
+    if (
+        "Lessons from earlier runs" in req.user
+        and intent.get("endpoint", "~") in req.user.split("Lessons from earlier runs", 1)[1]
+    ):
+        difficulty *= 0.5  # simulated learning: lessons about this endpoint halve the error rate
     if req.mistake(difficulty):
         kinds = (
             MISTAKES if not feedback else ("wrong_logic",)

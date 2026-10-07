@@ -50,8 +50,8 @@ def check_b03(c: Client) -> None:
     )
     assert r.status_code == 201, r.text
     lines = {i["unit_price"]: i["line_total"] for i in r.json()["items"]}
-    assert lines == {"0.125": "0.13", "2.345": "2.35"}
-    assert r.json()["total"] == "2.48"
+    assert lines == {"0.125": "0.13", "1.005": "1.01"}
+    assert r.json()["total"] == "1.14"
 
 
 def check_b04(c: Client) -> None:

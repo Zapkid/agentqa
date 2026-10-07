@@ -33,7 +33,7 @@ PRODUCTS = [
     ("WIDGET", "Widget", "19.99", True),
     ("GADGET", "Gadget", "5.10", True),
     ("BOLT", "Bolt (each)", "0.125", True),
-    ("CABLE", "Cable (per metre)", "2.345", True),
+    ("CABLE", "Cable (per metre)", "1.005", True),
     ("NUT", "Nut (each)", "0.333", True),
     ("LEGACY", "Legacy part", "99.00", False),
 ]

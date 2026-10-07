@@ -16,10 +16,13 @@ def plan(req: SimRequest) -> dict[str, Any]:
     spec_ref = payload.get("spec_chunk", {}).get("id", f"spec:{endpoint_id}")
     docs = documents(req.user)
     allowed = set(payload.get("categories", []))
+    t0_covers = bool(payload.get("spec_derived_checks_covered"))
     intents = []
     for rule in RULES:
         if f"{rule.method} {rule.path}" != endpoint_id or rule.category not in allowed:
             continue
+        if t0_covers and rule.t0_overlap:
+            continue  # told that code already covers mechanically derivable checks
         support = [
             cid for cid, text in docs.items() if all(k.lower() in text for k in rule.keywords)
         ]

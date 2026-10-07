@@ -221,7 +221,9 @@ class TestResult(BaseModel):
 
     @property
     def flaky(self) -> bool:
-        return bool(self.reruns) and len(set([self.outcome, *self.reruns])) > 1
+        """Pass/fail changed across reruns. A skipped rerun is inconclusive, not a flip."""
+        decisive = {o for o in [self.outcome, *self.reruns] if o in ("passed", "failed", "error")}
+        return bool(self.reruns) and len(decisive) > 1
 
 
 class RunResult(BaseModel):
@@ -269,4 +271,5 @@ class Finding(BaseModel):
     intent_ids: list[str]
     confidence: float
     triaged_by: str  # tier/model or "rule"
+    endpoints: list[str] = Field(default_factory=list)  # all endpoints sharing this root cause
     judge_checked: bool = False

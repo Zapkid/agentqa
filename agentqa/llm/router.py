@@ -138,6 +138,7 @@ class LLMClient:
         pre_call: list[PreCallHook] | None = None,
         post_call: list[PostCallHook] | None = None,
         rng: random.Random | None = None,
+        native_cache: bool = True,
     ) -> None:
         if not chain:
             raise ValueError("empty model chain")
@@ -149,6 +150,7 @@ class LLMClient:
         self.pre_call = pre_call or []
         self.post_call = post_call or []
         self.rng = rng or random.Random(0)
+        self.native_cache = native_cache
 
     @property
     def primary(self) -> ModelRef:
@@ -167,6 +169,8 @@ class LLMClient:
         metadata: CallMetadata | None = None,
     ) -> LLMResult:
         meta = metadata or CallMetadata()
+        if not self.native_cache:
+            messages = [m.model_copy(update={"cache_prefix": False}) for m in messages]
         if meta.tier is None and self.tier is not None:
             meta = meta.model_copy(update={"tier": self.tier})
         est = estimate_tokens(messages_text(messages)) + max_tokens
@@ -494,7 +498,9 @@ class ModelRouter:
         ledger: CostLedger | None = None,
         pre_call: list[PreCallHook] | None = None,
         post_call: list[PostCallHook] | None = None,
+        native_cache: bool = True,
     ) -> None:
+        self.native_cache = native_cache
         self.profile_name = profile_name or os.environ.get("AGENTQA_PROFILE", "simulated")
         self.profile: Profile = config.profile(self.profile_name)
         self.registry = registry or ProviderRegistry()
@@ -513,6 +519,7 @@ class ModelRouter:
             tier=tier,
             pre_call=self.pre_call,
             post_call=self.post_call,
+            native_cache=self.native_cache,
         )
 
     def for_role(self, role: str) -> LLMClient:
@@ -525,6 +532,7 @@ class ModelRouter:
                 tier="judge",
                 pre_call=self.pre_call,
                 post_call=self.post_call,
+                native_cache=self.native_cache,
             )
         return self.for_tier(self.profile.tier_for_role(role))
 

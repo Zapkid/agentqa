@@ -59,9 +59,25 @@ def redact_text(text: str, *, pii: bool = True) -> str:
         else:
             out = pattern.sub(REDACTED, out)
     if pii:
-        for _, pattern in PII_PATTERNS:
-            out = pattern.sub(REDACTED, out)
+        for name, pattern in PII_PATTERNS:
+            if name == "card_number":
+                out = pattern.sub(lambda m: REDACTED if _luhn(m.group(0)) else m.group(0), out)
+            else:
+                out = pattern.sub(REDACTED, out)
     return out
+
+
+def _luhn(candidate: str) -> bool:
+    """Card numbers pass the Luhn checksum; timestamps and ids almost never do."""
+    digits = [int(c) for c in candidate if c.isdigit()]
+    if not 13 <= len(digits) <= 16:
+        return False
+    total = 0
+    for i, d in enumerate(reversed(digits)):
+        if i % 2 == 1:
+            d = d * 2 - 9 if d * 2 > 9 else d * 2
+        total += d
+    return total % 10 == 0
 
 
 def redact(value: Any, *, pii: bool = True) -> Any:

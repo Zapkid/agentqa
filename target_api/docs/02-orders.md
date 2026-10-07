@@ -12,7 +12,7 @@
 - Unit prices are decimal strings with up to **three** decimals (we sell some parts by the
   millimetre and the piece, e.g. a bolt at `0.125`).
 - Each line total is `unit_price × quantity`, **rounded half-up to the cent**, computed with
-  decimal arithmetic. Example: 1 × `0.125` is `0.13`; 1 × `2.345` is `2.35`.
+  decimal arithmetic. Example: 1 × `0.125` is `0.13`; 1 × `1.005` is `1.01`.
 - The order total is the sum of the line totals. Money is always returned as a string.
 
 ## Retries and duplicate submissions

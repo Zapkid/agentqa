@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 from typing import Any, cast
 
+from pydantic import BaseModel, Field
+
 from agentqa.agents.synthesizer import PLACEHOLDER_ID
 from agentqa.guards.injection import delimit, refuse_tool
 from agentqa.ingest.vectorstore import VectorStore
@@ -22,7 +24,7 @@ from agentqa.models import (
     SpecBundle,
     TestIntent,
 )
-from agentqa.obs import tracing
+from agentqa.obs import metrics, tracing
 
 FIXTURES_DOC = {
     "client": "httpx.Client bound to the API base URL; use relative paths, e.g. client.get('/orders', headers=...)",
@@ -209,3 +211,50 @@ class Generator:
             )
             out = cast(GeneratorOutput, result.parsed)
             return GeneratedTest(intent_id=intent.id, **out.model_dump())
+
+    def generate_batch(
+        self, intents: list[TestIntent], client: LLMClient, *, task_id: str | None = None
+    ) -> dict[str, GeneratedTest | str]:
+        """One call for several intents. Each item is validated on its own: a bad item is
+        returned as an error string and never poisons the rest of the batch."""
+        prompt = load_prompt("generator_batch")
+        payload = {
+            "intents": [
+                {
+                    "intent": i.model_dump(exclude={"origin"}),
+                    "endpoint_spec": self.chunks[f"spec:{i.endpoint}"].text,
+                    "test_name_hint": f"test_{i.id.replace('-', '_')}"[:80],
+                }
+                for i in intents
+            ],
+            "all_endpoints": [e.id for e in self.bundle.endpoints],
+        }
+        with tracing.span(
+            "agent generator batch",
+            "agent",
+            **{"agentqa.agent": "generator", "agentqa.batch_size": len(intents)},
+        ):
+            result = client.complete(
+                prompt.render(payload=json.dumps(payload, indent=1)),
+                response_schema=BatchOutput,
+                max_tokens=2000 * len(intents),
+                metadata=prompt.metadata("generator", task_id=task_id),
+            )
+        metrics.observe("agentqa_batch_size", len(intents))
+        out: dict[str, GeneratedTest | str] = {i.id: "missing from batch output" for i in intents}
+        for item in cast(BatchOutput, result.parsed).tests:
+            intent_id = str(item.get("intent_id", ""))
+            if intent_id not in out:
+                continue
+            try:
+                parsed = GeneratorOutput.model_validate(
+                    {k: v for k, v in item.items() if k != "intent_id"}
+                )
+                out[intent_id] = GeneratedTest(intent_id=intent_id, **parsed.model_dump())
+            except ValueError as exc:
+                out[intent_id] = f"item failed validation: {str(exc)[:200]}"
+        return out
+
+
+class BatchOutput(BaseModel):
+    tests: list[dict[str, Any]] = Field(max_length=12)
