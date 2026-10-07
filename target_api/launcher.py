@@ -36,6 +36,7 @@ class TargetServer:
         extra_env: dict[str, str] | None = None,
         cpu_limit_s: int | None = None,
         cpus: set[int] | None = None,
+        code_root: Path | None = None,
     ) -> None:
         self.bugs = list(bugs)
         self.perf_bugs = list(perf_bugs)
@@ -44,9 +45,10 @@ class TargetServer:
         self.log_path = self.workdir / "server.log"
         self.extra_env = extra_env or {}
         self.cpu_limit_s = cpu_limit_s
-        self.cpus = (
-            cpus  # pin to these cores (stand-in for a container CPU limit; repeatable perf runs)
-        )
+        # pin to these cores (stand-in for a container CPU limit; repeatable perf runs)
+        self.cpus = cpus
+        # another checkout (e.g. main) to run the baseline build from, for PR A/B checks
+        self.code_root = code_root or REPO_ROOT
         self.proc: subprocess.Popen[bytes] | None = None
 
     @property
@@ -65,7 +67,7 @@ class TargetServer:
             "PERF_BUGS": ",".join(self.perf_bugs),
             "TARGET_DB": str(self.workdir / "orders.db"),
             "TARGET_LOG": str(self.log_path),
-            "PYTHONPATH": str(REPO_ROOT),
+            "PYTHONPATH": str(self.code_root),
             **self.extra_env,
         }
         cmd = [
@@ -91,7 +93,7 @@ class TargetServer:
         self.proc = subprocess.Popen(
             cmd,
             env=env,
-            cwd=REPO_ROOT,
+            cwd=self.code_root,
             stdout=subprocess.DEVNULL,
             stderr=self._stderr,
             preexec_fn=pin,

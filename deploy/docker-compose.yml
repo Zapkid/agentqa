@@ -1,0 +1,73 @@
+# Full local stack: target API (fixed CPU/memory limits), Phoenix, OTel Collector, Prometheus,
+# Grafana (provisioned dashboards + alerts), cAdvisor (container CPU/memory).
+# Start:  docker compose -f deploy/docker-compose.yml up -d --build
+# Image tags pinned as of 2026-10-07; bump deliberately.
+name: agentqa
+
+services:
+  target:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.target
+    environment:
+      BUGS: ${BUGS:-}
+      PERF_BUGS: ${PERF_BUGS:-}
+      TARGET_WEBHOOK_SECRET: ${TARGET_WEBHOOK_SECRET:-change-me-local-only}
+      TARGET_TRACING: "1"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      TARGET_LOG: /tmp/target.log
+    ports: ["8000:8000"]
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M}   # fixed limits for repeatable perf runs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes: ["./otel-collector.yaml:/etc/otelcol/config.yaml:ro"]
+    ports: ["4317:4317", "4318:4318", "9464:9464"]
+    depends_on: [phoenix]
+
+  phoenix:
+    image: arizephoenix/phoenix:version-11.0.0
+    ports: ["6006:6006"]   # UI + OTLP/HTTP receiver at /v1/traces
+    environment:
+      PHOENIX_WORKING_DIR: /data
+    volumes: ["phoenix-data:/data"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--web.enable-lifecycle"]
+    volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [otel-collector, cadvisor]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports: ["8080:8080"]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-only}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-http://localhost:9999/alerts}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  phoenix-data: {}

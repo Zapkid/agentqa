@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block title %}{{ run_id }}{% endblock %}{% block body %}
+<h1>{{ run_id }}</h1>
+{% if r %}
+{% if r.simulated %}<p class="banner">Simulated models: this run demonstrates the pipeline's mechanics, not a real model's quality.</p>{% endif %}
+{% if r.aborted %}<p class="banner bad">Aborted: {{ r.aborted }} (partial report)</p>{% endif %}
+<p>{{ r.api_title }} {{ r.api_version }} · profile <code>{{ r.profile }}</code> · strategy <code>{{ r.strategy }}</code> · target <code>{{ r.target }}</code><br>
+Trace <code>{{ trace_id }}</code> · <a href="{{ phoenix }}">open Phoenix</a> (search the trace id) ·
+<a href="/runs/{{ run_id }}/report.html">technical report</a> · <a href="/runs/{{ run_id }}/summary.html">executive summary</a></p>
+<h2>Cost</h2>
+<p>{{ r.cost.total_tokens }} tokens ({{ r.cost.cached_input_tokens }} cached) in {{ r.cost.calls }} LLM calls ·
+${{ '%.4f'|format(r.cost.cost_usd_actual) }} actual · ${{ '%.4f'|format(r.cost.cost_usd_list_equivalent) }} list-equivalent ·
+escalations {{ r.delegation.escalations }} · tokens saved (estimate) {{ r.delegation.tokens_saved_estimate }}</p>
+<h2>Stage timeline</h2>
+<table><tbody>{% for t in timeline %}<tr><td style="width:32%">{{ t.name }} <span class="muted">{{ t.ms }} ms</span></td>
+<td><div class="tl"><span class="{{ t.kind }}" style="left:{{ t.left }}%;width:{{ t.width }}%"></span></div></td></tr>{% endfor %}</tbody></table>
+<h2>Findings ({{ r.findings|length }})</h2>
+{% for f in r.findings %}
+<details {% if f.classification == 'product_bug' and f.severity in ('critical','high') %}open{% endif %}>
+<summary><strong>{{ f.id }}</strong> · {{ f.severity }} · {{ f.classification }} · {{ f.title }} <span class="muted">({{ f.endpoint }}, confidence {{ '%.2f'|format(f.confidence) }}, {{ f.triaged_by }})</span></summary>
+<p>{{ f.root_cause_hypothesis }}</p><pre>{{ f.repro_curl }}</pre>
+<ul>{% for e in f.evidence %}<li><code>{{ e.ref }}</code> ({{ e.kind }}): {{ e.excerpt[:300] }}</li>{% endfor %}</ul>
+</details>{% endfor %}
+<h2>Guardrail events</h2>
+<p>Quarantined chunks: {{ r.quarantined_chunks|join(', ') or 'none' }}</p>
+<ul>{% for e in r.guardrail_events %}<li>{{ e.guardrail }} {{ e.action }} {{ e.kind }}: {{ e.detail }} ({{ e.test }})</li>{% else %}<li class="muted">none during execution</li>{% endfor %}</ul>
+<h2>Delegation ledger</h2>
+<table><thead><tr><th>task</th><th>type</th><th>start tier</th><th>why</th><th>tokens</th><th>verifier</th><th>path</th><th>result</th></tr></thead><tbody>
+{% for d in delegations %}<tr><td>{{ d.task_id }}</td><td>{{ d.task_type }}</td><td>{{ d.start_tier }}</td><td class="muted">{{ d.reason }}</td>
+<td>{{ d.actual_tokens }}</td><td>{{ d.verifier_outcome }}</td><td><code>{{ d.escalation_path }}</code></td><td>{{ d.final_result }}</td></tr>{% endfor %}
+</tbody></table>
+{% else %}<p class="muted">No report for this run.</p>{% endif %}
+{% endblock %}

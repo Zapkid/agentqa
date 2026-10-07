@@ -1,0 +1,37 @@
+# Agents and the target export OTLP here. Traces go to Phoenix; metrics are exposed for Prometheus.
+receivers:
+  otlp:
+    protocols:
+      grpc: {endpoint: 0.0.0.0:4317}
+      http: {endpoint: 0.0.0.0:4318}
+
+processors:
+  batch: {}
+  # Defence in depth: drop prompt/response bodies' obvious secrets before they leave the host.
+  transform/redact:
+    trace_statements:
+      - context: span
+        statements:
+          - replace_pattern(attributes["input.value"], "sk-ant-[A-Za-z0-9_\\-]+", "[REDACTED]")
+          - replace_pattern(attributes["output.value"], "sk-ant-[A-Za-z0-9_\\-]+", "[REDACTED]")
+
+exporters:
+  otlphttp/phoenix:
+    endpoint: http://phoenix:6006
+    tls: {insecure: true}
+  prometheus:
+    endpoint: 0.0.0.0:9464
+    resource_to_telemetry_conversion: {enabled: true}
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/redact, batch]
+      exporters: [otlphttp/phoenix]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

@@ -1,0 +1,29 @@
+{
+ "recall": 0.9167,
+ "precision": 1.0,
+ "triage_accuracy": 0.9444,
+ "hallucination_rate": 0.2,
+ "test_validity_rate": 1.0,
+ "tokens_total": 105542,
+ "tests": 48,
+ "tests_by_tier": {
+  "T0": 33,
+  "T2": 6,
+  "T1": 9
+ },
+ "escalation_rate": 0.062,
+ "bugs_detected": [
+  "B01",
+  "B02",
+  "B03",
+  "B04",
+  "B05",
+  "B06",
+  "B07",
+  "B08",
+  "B09",
+  "B10",
+  "B11"
+ ],
+ "llm_calls": 72
+}

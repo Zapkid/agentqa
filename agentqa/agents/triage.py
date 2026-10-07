@@ -64,7 +64,7 @@ class Cluster:
 def symptom(result: TestResult) -> str:
     msg = result.message.splitlines()[-1] if result.message else ""
     msg = UUID_RE.sub("<id>", msg)
-    msg = re.sub(r"/tmp/\S+", "", msg)
+    msg = normalize(msg)  # paths, ids and ports differ per run; symptoms must not
     msg = re.sub(r"\d+\.\d+", "<n>", msg)
     status = next((e.status for e in reversed(result.exchanges) if e.status is not None), None)
     exc = next(

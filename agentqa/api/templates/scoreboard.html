@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block body %}
+<h1>Eval scoreboard</h1>
+<p class="muted">From results/*.json (see RESULTS.md for method and caveats).</p>
+<table><thead><tr><th>results file</th><th>commit</th><th>strategy</th><th>n</th><th>recall</th><th>precision</th><th>triage acc.</th><th>tokens</th><th>list $</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ r.file }}</td><td><code>{{ r.commit }}</code></td><td>{{ r.strategy }}</td><td>{{ r.n }}</td>
+<td>{{ '%.0f%%'|format(r.recall * 100) }}</td><td>{{ '%.2f'|format(r.precision) if r.precision is not none else 'n/a' }}</td>
+<td>{{ '%.2f'|format(r.triage) if r.triage is not none else 'n/a' }}</td><td>{{ r.tokens|int }}</td><td>{{ '%.3f'|format(r.cost) }}</td></tr>
+{% else %}<tr><td colspan="9" class="muted">No results yet: <code>make eval</code></td></tr>{% endfor %}
+</tbody></table>{% endblock %}

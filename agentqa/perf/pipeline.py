@@ -106,7 +106,7 @@ class PerfSession:
     ) -> PerfRun:
         wl = self.workload()
         orders = wl.data_setup_orders if seed_orders is None else seed_orders
-        with TargetServer(perf_bugs=perf_bugs, cpus={0}) as srv:
+        with TargetServer(perf_bugs=perf_bugs, cpus={0}, code_root=code_root) as srv:
             if orders:
                 srv.seed(orders)
             return run_perf(

@@ -221,6 +221,14 @@ def killswitch(
         typer.echo(f"kill switch engaged: {ks.engage(reason)}")
 
 
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8088) -> None:
+    """Web UI: run history, run detail, eval scoreboard."""
+    import uvicorn
+
+    uvicorn.run("agentqa.api.app:app", host=host, port=port, log_level="warning")
+
+
 @app.command("eval")
 def eval_cmd(
     matrix: Annotated[bool, typer.Option(help="Profile matrix (strategy S3)")] = False,
@@ -340,10 +348,12 @@ def perf_ab(
     target = load_target(target_config)
     s = PerfSession(target, target.spec_path, target.docs_path, profile=profile)
     bugs = [] if candidate == "clean" else [b.strip() for b in candidate.split(",")]
-    base = s.run_build("clean", [], test_type, iterations, seed_orders)
-    base2 = s.run_build("clean-repeat", [], test_type, iterations, seed_orders)
+    base = s.run_build("clean", [], test_type, iterations, seed_orders, code_root=baseline_root)
+    base2 = s.run_build(
+        "clean-repeat", [], test_type, iterations, seed_orders, code_root=baseline_root
+    )
     band = analysis.noise_band(base, base2)
-    cand = s.run_build(candidate, bugs, test_type, iterations, seed_orders)
+    cand = s.run_build(f"candidate-{candidate}", bugs, test_type, iterations, seed_orders)
     res = s.ab(base, cand, band, f"ab-{candidate}")
     report = perf_report(
         [res], s.workload(), s.workload_path, s.out_dir / f"perf_report-{candidate}.md"

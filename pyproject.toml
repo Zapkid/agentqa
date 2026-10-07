@@ -41,6 +41,7 @@ dev = [
 
 [project.scripts]
 agentqa = "agentqa.cli:app"
+agentqa-mcp = "agentqa.mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,64 @@
+# Every PR: lint, types, unit + integration tests, secret scan, the deterministic replay-mode
+# eval gate (no API keys) and a relative perf A/B smoke (PR target vs main target, same runner).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {python-version: "3.12"}
+      - run: uv sync
+      - name: Lint
+        run: uv run ruff check .
+      - name: Types
+        run: uv run mypy
+      - name: Secret scan
+        run: uv run python scripts/secret_scan.py
+      - name: Unit and integration tests (fake/simulated LLM, no network)
+        run: uv run pytest -m "not slow" --cov --cov-report=term
+      - name: End-to-end pipeline, sandbox and MCP tests
+        run: uv run pytest tests/test_pipeline_e2e.py tests/test_executor.py tests/test_mcp_server.py target_api/tests/test_seeded_bugs.py
+
+  replay-gate:
+    # Replays committed LLM-cache fixtures (cache mode replay_only: any cache miss fails the job),
+    # then fails if recall or triage accuracy drop beyond tolerance vs evals/baselines/main.json,
+    # or if the escalation rate regresses. Catches code regressions; model/prompt regressions are
+    # caught by the nightly live eval (eval-live.yml).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {python-version: "3.12"}
+      - run: uv sync
+      - run: uv run agentqa eval --gate
+        env:
+          AGENTQA_CACHE_MODE: replay_only
+          AGENTQA_CACHE_DIR: evals/fixtures/llm_cache
+
+  perf-ab-smoke:
+    # Relative A/B on the same runner: baseline = target from main, candidate = target from this PR.
+    # Shared runners are noisy, so the threshold is the measured clean-vs-clean noise band.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: astral-sh/setup-uv@v6
+        with: {python-version: "3.12"}
+      - run: uv sync
+      - name: Check out main as the baseline
+        run: git worktree add ../baseline origin/main || git worktree add ../baseline HEAD
+      - name: A/B smoke (fails on regression beyond noise)
+        run: uv run agentqa perf ab --type smoke --candidate clean --iterations 3 --seed-orders 20000 --baseline-root ../baseline

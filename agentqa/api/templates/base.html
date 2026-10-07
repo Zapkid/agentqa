@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}AgentQA{% endblock %}</title>
+<style>
+:root { --bg:#fcfcfb; --fg:#0b0b0b; --muted:#52514e; --line:#e3e2dd; --accent:#2a78d6; --bad:#c62828; --ok:#1b7f4b; --bar:#2a78d6; --bar2:#eb6834; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1a1a19; --fg:#ffffff; --muted:#c3c2b7; --line:#34332f; --accent:#3987e5; --bad:#ff7b7b; --ok:#5fd39a; --bar:#3987e5; --bar2:#d95926; } }
+body { background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,sans-serif; margin:0 auto; max-width:1200px; padding:20px 16px; }
+a { color:var(--accent) } nav a { margin-right:16px }
+table { border-collapse:collapse; width:100%; font-size:14px; display:block; overflow-x:auto }
+th,td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top }
+.muted { color:var(--muted) } .bad { color:var(--bad) } .ok { color:var(--ok) }
+.tl { position:relative; height:18px; background:color-mix(in srgb, var(--fg) 5%, transparent); border-radius:3px }
+.tl span { position:absolute; top:3px; height:12px; border-radius:2px; background:var(--bar) }
+.tl span.agent { background:var(--bar2) }
+code, pre { font-family:ui-monospace,Menlo,monospace; font-size:13px }
+pre { white-space:pre-wrap; background:color-mix(in srgb, var(--fg) 6%, transparent); padding:8px; border-radius:6px }
+.banner { border-left:4px solid #eda100; padding:6px 12px; color:var(--muted) }
+details { margin:6px 0 }
+</style></head><body>
+<nav><a href="/">Runs</a><a href="/scoreboard">Eval scoreboard</a></nav>
+{% block body %}{% endblock %}
+</body></html>

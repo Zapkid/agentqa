@@ -14,7 +14,7 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), "<id>"),
     (re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?"), "<timestamp>"),
     (re.compile(r'\\?"(ts|elapsed_ms|ms|duration_s)\\?": ?[0-9.]+,? ?'), ""),
-    (re.compile(r"/tmp/\S+?/(suite|exec|verify)/"), ""),
+    (re.compile(r"(/[^\s/:]+)+/(suite|exec|verify)/"), ""),
     (re.compile(r"\bat 0x[0-9a-f]+\b"), "at <addr>"),
     (re.compile(r"agentqa-<id>"), "agentqa-<key>"),
 ]

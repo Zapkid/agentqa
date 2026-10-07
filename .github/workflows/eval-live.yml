@@ -1,0 +1,46 @@
+# Nightly and on demand: re-score real models (prompt or model changes invalidate the replay
+# cache, so only live runs catch model/prompt regressions), the full perf benchmark, and the slow
+# benchmark-proof tests. Uses repository secrets; never prints them.
+name: eval-live
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      profiles: {description: "profiles", default: "free,mixed,premium"}
+      seeds: {description: "runs per configuration", default: "3"}
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      AGENTQA_CACHE_MODE: read_write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {python-version: "3.12"}
+      - run: uv sync
+      - name: Benchmark proofs (seeded bugs and perf defects really manifest)
+        run: uv run pytest -m slow target_api/tests
+      - name: Live profile matrix and strategy comparison
+        run: |
+          uv run agentqa eval --matrix --profiles "${{ inputs.profiles || 'free,mixed,premium' }}" \
+            --seeds "${{ inputs.seeds || '3' }}" --tag live
+      - name: Perf benchmark (relative A/B, P01-P06)
+        run: uv run agentqa eval --perf --perf-iterations 3
+      - name: Publish summary
+        if: always()
+        run: |
+          echo "## AgentQA live eval" >> "$GITHUB_STEP_SUMMARY"
+          cat RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: |
+            results/
+            RESULTS.md

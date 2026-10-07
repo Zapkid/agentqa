@@ -494,6 +494,7 @@ class Pipeline:
                     priority=70,
                     spawn=spawn_after_dispatch,
                     dump=lambda r: None,
+                    resumable=False,
                 )
             )
             return children

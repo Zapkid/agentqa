@@ -1,0 +1,55 @@
+# Alert rules + a webhook contact point (provisioned). Set ALERT_WEBHOOK_URL in the environment.
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: agentqa-webhook
+    receivers:
+      - uid: agentqa-webhook
+        type: webhook
+        settings:
+          url: ${ALERT_WEBHOOK_URL}
+          httpMethod: POST
+policies:
+  - orgId: 1
+    receiver: agentqa-webhook
+    group_by: [alertname]
+groups:
+  - orgId: 1
+    name: agentqa
+    folder: AgentQA
+    interval: 1m
+    rules:
+      - uid: agentqa-budget-burn
+        title: LLM budget burn rate high
+        condition: C
+        for: 2m
+        annotations:
+          summary: List-equivalent LLM spend above $0.50 per 5 minutes
+        labels: {severity: warning}
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              expr: sum(increase(agentqa_llm_cost_usd_total{kind="list_equivalent"}[5m]))
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model: {type: threshold, expression: A, refId: C, conditions: [{evaluator: {type: gt, params: [0.5]}}]}
+      - uid: agentqa-provider-errors
+        title: LLM provider error spike
+        condition: C
+        for: 2m
+        annotations:
+          summary: Provider errors above 0.2/s (rate limits, outages); fallbacks are probably active
+        labels: {severity: critical}
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              expr: sum(rate(agentqa_llm_errors_total[5m]))
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model: {type: threshold, expression: A, refId: C, conditions: [{evaluator: {type: gt, params: [0.2]}}]}

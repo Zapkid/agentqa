@@ -47,7 +47,9 @@ def run_case(
     target = target or load_target()
     case_dir.mkdir(parents=True, exist_ok=True)
     os.environ["AGENTQA_SIM_SEED"] = str(seed)
-    store = store or Store(case_dir / "agentqa.db")
+    if store is None:
+        (case_dir / "agentqa.db").unlink(missing_ok=True)  # every case starts cold
+        store = Store(case_dir / "agentqa.db")
     t0 = time.monotonic()
     with TargetServer(bugs=BUG_IDS) as tgt, TargetServer() as ref:
         out = Pipeline(

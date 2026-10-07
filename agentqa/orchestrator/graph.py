@@ -39,6 +39,7 @@ class Task:
     priority: int = 0
     tolerate_failures: bool = False
     always_run: bool = False
+    resumable: bool = True  # False: result lives only in memory, so always re-run on resume
     spawn: Callable[[Any], list[Task]] | None = None
     dump: Callable[[Any], Any] = lambda r: r
     load: Callable[[Any], Any] = lambda p: p
@@ -128,7 +129,7 @@ class Supervisor:
         with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
             while True:
                 for t in self.graph.ready():
-                    if t.id in self._resumed and self._resumed[t.id][1] == "done":
+                    if t.resumable and t.id in self._resumed and self._resumed[t.id][1] == "done":
                         t.result, t.status = t.load(self._resumed[t.id][2]), "done"
                         tracing.event("checkpoint.resumed", task_id=t.id)
                         self._finish(t)

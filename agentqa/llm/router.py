@@ -16,6 +16,7 @@ import random
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -346,17 +347,24 @@ class LLMClient:
         max_tokens: int,
         meta: CallMetadata,
     ) -> tuple[RawResponse, str, int]:
-        key = cache_key(
-            {
-                "provider": ref.provider,
-                "model": ref.model,
-                "messages": [m.model_dump(exclude={"provider_raw"}) for m in convo],
-                "tools": [t.model_dump() for t in tools or []],
-                "schema": json_schema,
-                "params": {"temperature": temperature, "max_tokens": max_tokens},
-                "prompt": [meta.prompt_name, meta.prompt_version, meta.prompt_hash],
-            }
-        )
+        payload = {
+            "provider": ref.provider,
+            "model": ref.model,
+            "messages": [m.model_dump(exclude={"provider_raw"}) for m in convo],
+            "tools": [t.model_dump() for t in tools or []],
+            "schema": json_schema,
+            "params": {"temperature": temperature, "max_tokens": max_tokens},
+            "prompt": [meta.prompt_name, meta.prompt_version, meta.prompt_hash],
+        }
+        key = cache_key(payload)
+        if os.environ.get(
+            "AGENTQA_CACHE_DEBUG"
+        ):  # write what was hashed, to diagnose replay misses
+            debug_dir = Path(os.environ["AGENTQA_CACHE_DEBUG"])
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            (debug_dir / f"{meta.agent}-{key[:12]}.json").write_text(
+                json.dumps(payload, indent=1, default=str)
+            )
         cached = self.cache.get(key)  # raises CacheMiss in replay_only mode
         if cached is not None:
             metrics.inc("agentqa_cache_hits_total", agent=meta.agent)
