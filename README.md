@@ -1,46 +1,42 @@
 # AgentQA
 
-Every app you use, from banking to food delivery, runs on a back end: a set of services that other
-software talks to through an API. Before a change ships, someone has to check that it still behaves
-properly. Does it charge the right amount? Can one customer see another customer's order? Does it
-slow down when a thousand people show up at once? Teams write automated tests for this, but the tests
-fall behind as the product changes, and the bugs that cost the most are broken business rules rather
-than obvious crashes.
+**An AI tester for APIs that you can trust, audit and afford.** Give it your API's technical
+description and the requirements your team already wrote. It plans the tests, writes and runs them,
+explains every failure with evidence, and load-tests the service, at a cost you can see and cap.
 
-**AgentQA is an AI-driven tester that tries to keep up for you.** You give it the API's technical
-description and the requirements your team already wrote. It then:
+## Why teams care
+Every app you use, from banking to food delivery, runs on APIs, and every release risks breaking
+one. The expensive bugs are rarely crashes. They are broken business rules: a wrong total, one
+customer seeing another's order, a cancelled order that still ships. Hand-written test suites lag
+behind the product, and QA becomes the bottleneck that slows releases or lets bugs escape.
 
-1. **Reads** both and works out what is riskiest to check.
-2. **Writes** the tests, leaving the easy ones to plain code (free) and the cheap AI model, and
-   paying for the strong model only when a test is hard.
-3. **Runs** them against the live service and records what breaks.
-4. **Explains** each problem with evidence and a command you can run to see it yourself.
-5. **Load-tests** the service and points to the likely cause of any slowdown.
+AI can write tests quickly, but most teams will not adopt it as it stands. It invents endpoints that
+do not exist, reports bugs it cannot prove, and the bill is unpredictable. AgentQA is built around
+those objections:
 
-AI testers have well-known weak spots: they invent endpoints that do not exist, claim bugs they cannot
-prove, and run up the bill. So this project is as much an experiment as a tool, and most of the
-engineering goes into making an AI system something you can actually trust:
+| What a buyer worries about | What AgentQA does about it |
+|---|---|
+| "Will it make things up?" | **Guardrails.** Tests may only call what the spec defines, run in a sandbox that blocks unapproved hosts and writes, and pass prompt-injection and secret-redaction checks. |
+| "Can we trust its bug reports?" | **Evidence and evals.** Every finding ships with proof and a command to reproduce it. The system is scored against a benchmark API with planted bugs, so you see how many it finds and how often it is wrong, and a CI gate fails the build if quality drops. |
+| "What will it cost us?" | **Cost-aware routing.** A dispatcher sends easy work to plain code or a cheap model and escalates to a strong model only when the cheap attempt fails verification. Every decision is in a ledger, and budgets and a kill switch cap spend. |
+| "Can we see what it is doing?" | **Observability.** Every agent step, model call, token count and cost is traced (OpenTelemetry), with Phoenix, Prometheus and Grafana wired up to receive it. |
+| "Will it survive real workloads?" | **Orchestration.** A supervisor runs specialised agents (planner, generator, triage, reporter) as a task graph with checkpoints, failure isolation and resumable runs. |
+| "Is it only functional testing?" | **Performance too.** Load tests compare a clean build with a changed one, so only a change beyond measured noise counts as a regression, and the likely cause is named. |
+| "Does it fit how our developers work?" | **Plug-in access.** An MCP server lets coding agents such as Claude Code or Cursor call it directly, and an eval gate and a performance smoke test run in CI on every pull request. |
 
-- **Orchestration.** A supervisor runs the work as a graph of tasks, with several specialised agents
-  (planner, generator, triage, reporter), saved checkpoints so a crashed run can resume, failure
-  isolation so one broken task does not sink the run, and a kill switch and budget limits.
-- **Cost-aware routing.** A dispatcher decides which model should handle each job. Easy work goes to
-  plain code or a cheap model, and hard work escalates to a strong one only if the cheap attempt
-  fails verification. Every decision is written to a ledger.
-- **Guardrails.** Tests may only call what the spec defines, run in a sandbox that blocks
-  unapproved hosts and writes, and pass through prompt-injection and secret-redaction checks.
-- **Evals.** The demo API has planted bugs, so the system is scored against known answers: how many
-  it finds, how many of its claims are wrong, and what each run costs. Strategies and model
-  configurations are compared side by side, and a CI gate fails the build if quality regresses.
-- **Observability.** Every run produces a trace of each agent step, model call, token count and
-  cost (OpenTelemetry), with a dashboard stack (Phoenix, Prometheus, Grafana) wired up to receive it.
-- **Performance testing.** Load tests are run against a clean build and a changed build, so only a
-  difference beyond measured noise counts as a regression.
-- **Plug-in access.** An MCP server lets coding agents such as Claude Code or Cursor call all of
-  this directly.
+## What you can show in five minutes
+`make demo` runs the whole story against the bundled Orders API, which has 12 functional bugs and
+6 performance defects planted in it: plan, tests, run, triaged findings with evidence, a performance
+diagnosis and an executive summary, with traces and cost for every step. See
+[docs/DEMO.md](docs/DEMO.md) for a talk track.
 
-The aim is to find out whether an AI tester can be **useful, trustworthy and affordable** at the same
-time, with numbers rather than opinions.
+## Where it stands
+This is a proof of concept. In the bundled benchmark the cost-aware strategy found 94% of the planted
+bugs, against 92% for always using the strongest model, at 47% of the cost, and caught 6 of 6
+performance defects. **Those numbers come from simulated models** (the build environment had no API
+keys), so they show that the mechanics work, not how a particular real model performs. Real-model
+tables come from `make eval-live`. Details and caveats are under [Results](#results) and in
+[docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## In technical terms
 
