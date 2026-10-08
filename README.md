@@ -18,11 +18,29 @@ description and the requirements your team already wrote. It then:
 5. **Load-tests** the service and points to the likely cause of any slowdown.
 
 AI testers have well-known weak spots: they invent endpoints that do not exist, claim bugs they cannot
-prove, and run up the bill. So this project is as much an experiment as a tool. It adds guardrails
-(tests may only call what the spec defines and may only touch systems you mark as safe) and it
-measures the result: how many planted bugs it finds, how many of its claims are wrong, and what each
-run costs. The aim is to find out whether an AI tester can be **useful, trustworthy and affordable** at
-the same time.
+prove, and run up the bill. So this project is as much an experiment as a tool, and most of the
+engineering goes into making an AI system something you can actually trust:
+
+- **Orchestration.** A supervisor runs the work as a graph of tasks, with several specialised agents
+  (planner, generator, triage, reporter), saved checkpoints so a crashed run can resume, failure
+  isolation so one broken task does not sink the run, and a kill switch and budget limits.
+- **Cost-aware routing.** A dispatcher decides which model should handle each job. Easy work goes to
+  plain code or a cheap model, and hard work escalates to a strong one only if the cheap attempt
+  fails verification. Every decision is written to a ledger.
+- **Guardrails.** Tests may only call what the spec defines, run in a sandbox that blocks
+  unapproved hosts and writes, and pass through prompt-injection and secret-redaction checks.
+- **Evals.** The demo API has planted bugs, so the system is scored against known answers: how many
+  it finds, how many of its claims are wrong, and what each run costs. Strategies and model
+  configurations are compared side by side, and a CI gate fails the build if quality regresses.
+- **Observability.** Every run produces a trace of each agent step, model call, token count and
+  cost (OpenTelemetry), with a dashboard stack (Phoenix, Prometheus, Grafana) wired up to receive it.
+- **Performance testing.** Load tests are run against a clean build and a changed build, so only a
+  difference beyond measured noise counts as a regression.
+- **Plug-in access.** An MCP server lets coding agents such as Claude Code or Cursor call all of
+  this directly.
+
+The aim is to find out whether an AI tester can be **useful, trustworthy and affordable** at the same
+time, with numbers rather than opinions.
 
 ## In technical terms
 
