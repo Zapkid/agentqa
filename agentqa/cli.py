@@ -356,6 +356,10 @@ def perf_ab(
     baseline_root: Annotated[
         Path | None, typer.Option(help="Checkout of the baseline code (e.g. main) for PR A/B")
     ] = None,
+    clean_repeats: Annotated[
+        int,
+        typer.Option(help="Clean repeats used to measure the noise band (one pair is too few)"),
+    ] = 2,
 ) -> None:
     """Relative A/B: clean vs candidate back to back on this host, with a measured noise band."""
     from agentqa.perf import analysis
@@ -366,10 +370,13 @@ def perf_ab(
     s = PerfSession(target, target.spec_path, target.docs_path, profile=profile)
     bugs = [] if candidate == "clean" else [b.strip() for b in candidate.split(",")]
     base = s.run_build("clean", [], test_type, iterations, seed_orders, code_root=baseline_root)
-    base2 = s.run_build(
-        "clean-repeat", [], test_type, iterations, seed_orders, code_root=baseline_root
-    )
-    band = analysis.noise_band(base, base2)
+    repeats = [
+        s.run_build(
+            f"clean-repeat{i}", [], test_type, iterations, seed_orders, code_root=baseline_root
+        )
+        for i in range(1, clean_repeats + 1)
+    ]
+    band = analysis.noise_band(base, *repeats)
     cand = s.run_build(f"candidate-{candidate}", bugs, test_type, iterations, seed_orders)
     res = s.ab(base, cand, band, f"ab-{candidate}")
     report = perf_report(
