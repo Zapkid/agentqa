@@ -346,7 +346,7 @@ def _orders_json(conn: Any, rows: list[Any]) -> list[dict[str, Any]]:
         return out
     ids = [r["id"] for r in rows]
     marks = ",".join("?" * len(ids))
-    items = query(conn, f"SELECT * FROM order_items WHERE order_id IN ({marks}) ORDER BY id", ids)
+    items = query(conn, f"SELECT * FROM order_items WHERE order_id IN ({marks}) ORDER BY id", ids)  # noqa: S608 - only ? placeholders are interpolated
     by_order: dict[str, list[Any]] = {}
     for it in items:
         by_order.setdefault(it["order_id"], []).append(it)
@@ -468,7 +468,7 @@ def patch_product(product_id: UuidPath, body: ProductPatch, p: Auth) -> Any:
             if value is not None:
                 execute(
                     conn,
-                    f"UPDATE products SET {field} = ? WHERE id = ?",
+                    f"UPDATE products SET {field} = ? WHERE id = ?",  # noqa: S608 - field comes from a fixed tuple of column names
                     (int(value) if field == "active" else value, pid),
                 )
         conn.commit()
@@ -578,10 +578,10 @@ def list_orders(
     clause = (" WHERE " + " AND ".join(where)) if where else ""
     offset = (page - 1) * page_size + (1 if bugs.on("B02") and page > 1 else 0)
     with db.connection() as conn:
-        total = query(conn, f"SELECT COUNT(*) AS c FROM orders{clause}", params)[0]["c"]
+        total = query(conn, f"SELECT COUNT(*) AS c FROM orders{clause}", params)[0]["c"]  # noqa: S608 - clause is assembled from literals; values are bound
         rows = query(
             conn,
-            f"SELECT * FROM orders{clause} ORDER BY created_at DESC, id LIMIT ? OFFSET ?",
+            f"SELECT * FROM orders{clause} ORDER BY created_at DESC, id LIMIT ? OFFSET ?",  # noqa: S608 - clause is assembled from literals; values are bound
             [*params, page_size, offset],
         )
         return {

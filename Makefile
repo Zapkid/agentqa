@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets demo up down eval eval-live eval-replay perf-ab target example-tasks clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks clean
 
 install:
 	$(UV) sync
@@ -30,6 +30,15 @@ cov:
 
 secrets:
 	$(PY) scripts/secret_scan.py
+
+# Known-vulnerability scan of the locked dependencies. The ignored IDs are chromadb *server*
+# advisories that do not apply to the embedded client we use (docs/SECURITY.md); anything new fails.
+AUDIT_IGNORES := --ignore-vuln PYSEC-2026-311 --ignore-vuln PYSEC-2026-3813 \
+                 --ignore-vuln PYSEC-2026-3814 --ignore-vuln PYSEC-2026-3815
+audit:
+	@mkdir -p .cache
+	@$(UV) export --frozen --no-hashes --no-emit-project -q -o .cache/requirements.txt
+	uvx pip-audit -r .cache/requirements.txt --no-deps --disable-pip $(AUDIT_IGNORES)
 
 # Run the target API locally (no Docker). BUGS=B01,B04 PERF_BUGS=P01 make target
 target:

@@ -72,6 +72,7 @@ def suite_config(
         "base_url": base_url,
         "out_dir": str(out_dir),
         "allow_mutations": allow_mutations,
+        "read_only_methods": sorted(config.guardrails().sandbox.read_only_methods),
         "auth": {r: target.headers(r) for r in roles},
         "customer_id": roles["customer"].customer_id if "customer" in roles else None,
         "other_customer_id": roles["other_customer"].customer_id
@@ -135,7 +136,7 @@ class Executor:
             "HOME": str(out_dir),
         }
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603 - pytest with fixed arguments; generated tests run in the sandbox conftest
                 cmd,
                 env=env,
                 cwd=suite_dir,

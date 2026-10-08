@@ -75,13 +75,22 @@ class Store:
 
     # -------------------------------------------------------------- runs
 
+    # Columns save_run may set. Column names are interpolated into SQL, so they come from this
+    # allowlist and never from a caller's keyword names.
+    RUN_FIELDS = frozenset(
+        {"spec_id", "api_title", "profile", "strategy", "status", "trace_id", "run_dir", "summary"}
+    )
+
     def save_run(self, run_id: str, **fields: Any) -> None:
+        unknown = set(fields) - self.RUN_FIELDS
+        if unknown:
+            raise ValueError(f"unknown run field(s): {sorted(unknown)}")
         existing = self.query("SELECT run_id FROM runs WHERE run_id = ?", (run_id,))
         if not existing:
             self.execute("INSERT INTO runs (run_id, created) VALUES (?, ?)", (run_id, time.time()))
         for k, v in fields.items():
             self.execute(
-                f"UPDATE runs SET {k} = ? WHERE run_id = ?",
+                f"UPDATE runs SET {k} = ? WHERE run_id = ?",  # noqa: S608 - k is allowlisted above
                 (json.dumps(v, default=str) if isinstance(v, (dict, list)) else v, run_id),
             )
 

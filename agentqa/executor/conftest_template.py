@@ -43,7 +43,7 @@ def _allowed(host: str | None, port: int | None) -> bool:
     return host == BASE.hostname or (host in LOOPBACK and BASE.hostname in LOOPBACK)
 
 
-READ_ONLY = {"GET", "HEAD", "OPTIONS"}
+READ_ONLY = {m.upper() for m in CONFIG.get("read_only_methods", ["GET", "HEAD", "OPTIONS"])}
 _current_test: dict[str, str] = {"name": "setup"}
 
 try:  # redaction from the main package when importable

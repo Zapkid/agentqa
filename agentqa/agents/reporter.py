@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any, cast
@@ -204,9 +205,13 @@ def judge_report(
 
 # ------------------------------------------------------------------ rendering
 
+# Markdown output, not HTML: _md_file_safe neutralises HTML when it is written, and _md_to_html
+# escapes it for the HTML report.
 _env = Environment(
-    autoescape=False, trim_blocks=True, lstrip_blocks=True
-)  # Markdown (escaped at HTML render)
+    autoescape=False,  # noqa: S701 - Markdown, not HTML (sanitised on write)
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 _html_env = Environment(
     autoescape=select_autoescape(["html"], default_for_string=True),
     trim_blocks=True,
@@ -380,6 +385,45 @@ a { color:var(--accent) }
 </body></html>"""
 
 
+_SAFE_LINK = re.compile(r"^(https?://|#|/)", re.IGNORECASE)
+
+
+def _link(m: re.Match[str]) -> str:
+    """A Markdown link as HTML. Text comes from untrusted sources (target responses, model output),
+    so only http(s), anchor and relative targets become links; anything else (``javascript:``,
+    ``data:``) stays plain text."""
+    label, target = m.group(1), m.group(2)
+    if _SAFE_LINK.match(html.unescape(target).strip()):
+        return f'<a href="{target}">{label}</a>'
+    return f"{label} ({target})"
+
+
+_CODE_SPAN = re.compile(r"(`[^`\n]*`)")
+
+
+def _md_file_safe(md: str) -> str:
+    """Neutralise raw HTML in Markdown written to disk. Finding titles, evidence excerpts and model
+    text are untrusted, and some Markdown viewers render embedded HTML. Code fences and code spans
+    are left alone, as is the ``> `` of a blockquote."""
+    out: list[str] = []
+    in_fence = False
+    for line in md.split("\n"):
+        if line.startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+        elif in_fence:
+            out.append(line)
+        else:
+            quote = "> " if line.startswith("> ") else ""
+            parts = _CODE_SPAN.split(line[len(quote) :])
+            safe = [
+                p if p.startswith("`") else p.replace("<", "&lt;").replace(">", "&gt;")
+                for p in parts
+            ]
+            out.append(quote + "".join(safe))
+    return "\n".join(out)
+
+
 def _md_to_html(md: str) -> str:
     """Small Markdown subset renderer (headings, tables, lists, code fences, quotes, bold, code)."""
     out: list[str] = []
@@ -387,12 +431,10 @@ def _md_to_html(md: str) -> str:
     i = 0
 
     def inline(text: str) -> str:
-        import re
-
         t = html.escape(text)
         t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
         t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
-        t = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', t)
+        t = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", _link, t)
         return t
 
     while i < len(lines):
@@ -460,8 +502,8 @@ def render(report: RunReport, out_dir: Path) -> dict[str, Path]:
         "summary_html": out_dir / "executive_summary.html",
         "report_json": out_dir / "report.json",
     }
-    paths["report_md"].write_text(md, encoding="utf-8")
-    paths["summary_md"].write_text(exec_md, encoding="utf-8")
+    paths["report_md"].write_text(_md_file_safe(md), encoding="utf-8")
+    paths["summary_md"].write_text(_md_file_safe(exec_md), encoding="utf-8")
     shell = _html_env.from_string(HTML_SHELL)
     paths["report_html"].write_text(
         shell.render(title=f"AgentQA report {report.run_id}", body=_md_to_html(md)),

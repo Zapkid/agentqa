@@ -1,42 +1,35 @@
 # Per-provider limits for the token-bucket limiter and retry policy.
+# API keys come from GEMINI_API_KEY, ANTHROPIC_API_KEY and OPENROUTER_API_KEY (see .env.example).
+# Capabilities, for reference: Anthropic uses json_schema output and cache_control on the static
+# system prefix; Gemini caches implicitly (cached_content_token_count); OpenRouter passes
+# response_format through on supporting models and every output is validated anyway.
 # Gemini free tier is assumed tight (Flash-class free tier ~10 RPM / 250 RPD, shared TPM; as of 2026-10-07).
 providers:
   gemini:
-    api_key_env: GEMINI_API_KEY
     free_tier: true            # cost_usd_actual = 0
     rpm: 10
     tpm: 250000
     rpd: 250
     max_retries: 4
-    native_structured_output: true
-    native_prompt_cache: implicit   # implicit caching on 2.5+/3.x models; reported via cached_content_token_count
   anthropic:
-    api_key_env: ANTHROPIC_API_KEY
     free_tier: false
     rpm: 50
     tpm: 400000
     rpd: 100000
     max_retries: 4
-    native_structured_output: true  # output_config.format = json_schema
-    native_prompt_cache: explicit   # cache_control on the static system prefix
   openrouter:
-    api_key_env: OPENROUTER_API_KEY
     base_url: https://openrouter.ai/api/v1
     free_tier: true            # only :free models are used by default
     rpm: 20
     tpm: 200000
     rpd: 50                    # 1000 after $10 lifetime credit purchase
     max_retries: 4
-    native_structured_output: true  # response_format json_schema on supporting models; validated anyway
-    native_prompt_cache: none
   simulated:
     free_tier: true
     rpm: 100000
     tpm: 100000000
     rpd: 10000000
     max_retries: 0
-    native_structured_output: true
-    native_prompt_cache: none
 circuit_breaker:
   failure_threshold: 3        # consecutive failures before opening
   reset_after_s: 60           # half-open after this long

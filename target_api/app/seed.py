@@ -88,7 +88,7 @@ def seed(db: Database) -> None:
             "customers",
             "webhook_events",
         ):
-            execute(conn, f"DELETE FROM {table}")
+            execute(conn, f"DELETE FROM {table}")  # noqa: S608 - table comes from a fixed tuple
         for key, name, email, risk in CUSTOMERS:
             execute(
                 conn,

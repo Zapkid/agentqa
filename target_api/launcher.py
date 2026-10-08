@@ -92,7 +92,7 @@ class TargetServer:
             if cpus:
                 os.sched_setaffinity(0, cpus)
 
-        self.proc = subprocess.Popen(
+        self.proc = subprocess.Popen(  # noqa: S603 - uvicorn with fixed arguments
             cmd,
             env=env,
             cwd=self.code_root,

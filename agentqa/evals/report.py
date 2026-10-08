@@ -15,7 +15,7 @@ from agentqa.config import REPO_ROOT
 
 RESULTS = REPO_ROOT / "results"
 SURFACE, TEXT, MUTED = "#fcfcfb", "#0b0b0b", "#52514e"
-BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+BLUE, ORANGE = "#2a78d6", "#eb6834"
 
 
 def _m(agg: dict[str, Any], key: str, fmt: str = "{:.2f}", pct: bool = False) -> str:

@@ -1,6 +1,7 @@
 # Nightly and on demand: re-score real models (prompt or model changes invalidate the replay
 # cache, so only live runs catch model/prompt regressions), the full perf benchmark, and the slow
-# benchmark-proof tests. Uses repository secrets; never prints them.
+# benchmark-proof tests. Uses repository secrets; never prints them. The nightly run costs money,
+# so it only runs when the repository variable NIGHTLY_EVAL is "true"; manual runs always work.
 name: eval-live
 on:
   schedule:
@@ -10,27 +11,36 @@ on:
       profiles: {description: "profiles", default: "free,mixed,premium"}
       seeds: {description: "runs per configuration", default: "3"}
 
+permissions:
+  contents: read
+
 jobs:
   live:
+    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_EVAL == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       AGENTQA_CACHE_MODE: read_write
+      PROFILES: ${{ inputs.profiles || 'free,mixed,premium' }}
+      SEEDS: ${{ inputs.seeds || '3' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: {python-version: "3.12"}
-      - run: uv sync
+      - run: uv sync --locked
       - name: Benchmark proofs (seeded bugs and perf defects really manifest)
         run: uv run pytest -m slow target_api/tests
       - name: Live profile matrix and strategy comparison
-        run: |
-          uv run agentqa eval --matrix --profiles "${{ inputs.profiles || 'free,mixed,premium' }}" \
-            --seeds "${{ inputs.seeds || '3' }}" --tag live
+        env:  # keys are scoped to the steps that call models
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: uv run agentqa eval --matrix --profiles "$PROFILES" --seeds "$SEEDS" --tag live
       - name: Perf benchmark (relative A/B, P01-P06)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: uv run agentqa eval --perf --perf-iterations 3
       - name: Publish summary
         if: always()

@@ -27,7 +27,7 @@ Log = Callable[[str], None]
 def commit_sha() -> str:
     try:
         return subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607 - git from PATH, fixed arguments
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,

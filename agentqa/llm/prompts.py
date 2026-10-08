@@ -23,7 +23,7 @@ from agentqa.llm.types import CallMetadata, Message
 
 PROMPTS_DIR = REPO_ROOT / "prompts"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
-_env = Environment(undefined=StrictUndefined, autoescape=False, keep_trailing_newline=False)
+_env = Environment(undefined=StrictUndefined, autoescape=False, keep_trailing_newline=False)  # noqa: S701 - prompt templates are plain text for a model, not HTML
 
 
 @dataclass(frozen=True)

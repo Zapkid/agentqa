@@ -31,6 +31,7 @@ POOLS: dict[str, list[str]] = {"order_id": [], "product_id": [], "customer_id": 
 STATE: dict[str, Any] = {"aborted": None, "env": None}
 EXPECTED = {s["name"]: set(s["expected_status"]) for s in CFG["scenarios"]}
 GUARD = CFG["guard"]
+RPS_WINDOW_S = 5.0  # request rate is averaged over this many seconds
 
 
 def _users() -> int:
@@ -73,6 +74,17 @@ def _guard_loop(environment: Any) -> None:
                     environment,
                     f"target error rate {bad / len(recent):.0%} over the last {len(recent)} requests",
                 )
+        now = time.time()
+        in_window = 0
+        for r in reversed(RECORDS):
+            if r[0] < now - RPS_WINDOW_S:
+                break
+            in_window += 1
+        if in_window / RPS_WINDOW_S > GUARD["max_rps"]:
+            _abort(
+                environment,
+                f"request rate {in_window / RPS_WINDOW_S:.0f}/s above the {GUARD['max_rps']}/s cap",
+            )
         if psutil.cpu_percent(interval=None) > GUARD["abort_host_cpu_pct"]:
             GUARD["_cpu_hot"] = GUARD.get("_cpu_hot", 0) + 1
             if GUARD["_cpu_hot"] >= 5:  # sustained, not a blip
@@ -118,7 +130,7 @@ def on_quitting(environment: Any, **_: Any) -> None:
 
 def _fill(path: str) -> str:
     for key, pool in POOLS.items():
-        path = path.replace("{" + key + "}", random.choice(pool))
+        path = path.replace("{" + key + "}", random.choice(pool))  # noqa: S311 - think-time, not cryptography
     return path
 
 
@@ -126,7 +138,7 @@ def _body(kind: str) -> tuple[bytes | None, dict[str, str]]:
     if kind == "order":
         body = {
             "customer_id": CFG.get("customer_id"),
-            "items": [{"product_id": random.choice(POOLS["product_id"]), "quantity": 1}],
+            "items": [{"product_id": random.choice(POOLS["product_id"]), "quantity": 1}],  # noqa: S311 - scenario choice, not cryptography
         }
         return json.dumps(body).encode(), {"Content-Type": "application/json"}
     if kind == "webhook":

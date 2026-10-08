@@ -177,18 +177,6 @@ def check_test(test: GeneratedTest, endpoints: list[Endpoint]) -> list[GuardViol
     return unique
 
 
-@dataclass
-class GroundingStats:
-    checked: int = 0
-    with_violations_pre_repair: int = 0
-    repaired: int = 0
-    quarantined: int = 0
-
-    @property
-    def hallucination_rate(self) -> float:
-        return self.with_violations_pre_repair / self.checked if self.checked else 0.0
-
-
 def record(stage: str, test_name: str, violations: list[GuardViolation]) -> None:
     if violations:
         metrics.inc("agentqa_guardrail_events_total", guardrail="grounding", action=stage)

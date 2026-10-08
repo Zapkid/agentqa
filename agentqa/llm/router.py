@@ -150,12 +150,8 @@ class LLMClient:
         self.tier = tier
         self.pre_call = pre_call or []
         self.post_call = post_call or []
-        self.rng = rng or random.Random(0)
+        self.rng = rng or random.Random(0)  # noqa: S311 - jitter, not cryptography
         self.native_cache = native_cache
-
-    @property
-    def primary(self) -> ModelRef:
-        return self.chain[0]
 
     # ------------------------------------------------------------------ public API
 

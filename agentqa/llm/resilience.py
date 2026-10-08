@@ -13,7 +13,7 @@ def backoff_delay(
     attempt: int, base_s: float, max_s: float, jitter: float, rng: random.Random | None = None
 ) -> float:
     """Delay before retry ``attempt`` (1-based): base * 2^(attempt-1), capped, +/- jitter."""
-    rng = rng or random.Random()
+    rng = rng or random.Random()  # noqa: S311 - retry jitter, not cryptography
     delay = min(max_s, base_s * (2 ** (attempt - 1)))
     return max(0.0, delay * (1 + rng.uniform(-jitter, jitter)))
 

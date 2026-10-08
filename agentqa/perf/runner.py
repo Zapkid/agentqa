@@ -155,6 +155,7 @@ def run_iteration(
         "out": str(records_path),
         "guard": {
             "max_users": g.max_users,
+            "max_rps": g.max_rps,
             "abort_error_rate": g.abort_error_rate,
             "abort_host_cpu_pct": g.abort_host_cpu_pct,
             "abort_host_mem_pct": g.abort_host_mem_pct,
@@ -195,7 +196,7 @@ def run_iteration(
         "tool_call",
         **{"agentqa.iteration": iteration, "agentqa.target": base_url},
     ):
-        proc = subprocess.run(
+        proc = subprocess.run(  # noqa: S603 - locust with fixed arguments
             cmd,
             env=env,
             capture_output=True,

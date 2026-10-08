@@ -18,10 +18,6 @@ targets:
   compose-target:
     base_url_pattern: "http://target:8000"
     sandbox: true
-injection:
-  quarantine: true
-  heuristic_threshold: 1          # number of heuristic hits that triggers quarantine on its own
-  classifier: true                # small-model classifier as a second opinion on borderline chunks
 load:
   max_users: 200
   max_rps: 2000
