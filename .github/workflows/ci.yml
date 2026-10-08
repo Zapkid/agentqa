@@ -28,7 +28,7 @@ jobs:
       - name: Unit and integration tests (fake/simulated LLM, no network)
         run: uv run pytest -m "not slow" --cov --cov-report=term
       - name: End-to-end pipeline, sandbox and MCP tests
-        run: uv run pytest tests/test_pipeline_e2e.py tests/test_executor.py tests/test_mcp_server.py target_api/tests/test_seeded_bugs.py
+        run: uv run pytest tests/test_pipeline_e2e.py tests/test_executor.py tests/test_mcp_server.py tests/test_example_tasks_api.py target_api/tests/test_seeded_bugs.py
 
   replay-gate:
     # Replays committed LLM-cache fixtures (cache mode replay_only: any cache miss fails the job),

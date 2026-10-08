@@ -1,4 +1,4 @@
-"""OpenAPI 3.0 / 3.1 parser: spec file or URL -> normalised Endpoint objects.
+"""OpenAPI 3.0 / 3.1 (and Swagger 2.0, converted on load) parser: spec file or URL -> Endpoints.
 
 ``$ref``s are resolved inline (with a cycle guard). 3.1 ``anyOf: [X, {type: null}]`` and 3.0
 ``nullable`` are both understood by the downstream schema checks.
@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 import yaml
 
+from agentqa.ingest import swagger2
 from agentqa.models import Endpoint, Param
 
 HTTP_METHODS = ("get", "put", "post", "delete", "patch", "head", "options")
@@ -30,8 +31,12 @@ def load_spec(source: str | Path) -> dict[str, Any]:
     else:
         text = Path(src).read_text(encoding="utf-8")
     data = json.loads(text) if text.lstrip().startswith("{") else yaml.safe_load(text)
+    if isinstance(data, dict) and "swagger" in data:
+        if not str(data["swagger"]).startswith("2."):
+            raise ValueError(f"unsupported Swagger version {data['swagger']}")
+        data = swagger2.to_openapi3(data)
     if not isinstance(data, dict) or "openapi" not in data:
-        raise ValueError("not an OpenAPI document (missing 'openapi' key)")
+        raise ValueError("not an OpenAPI or Swagger document (missing 'openapi' or 'swagger' key)")
     major_minor = str(data["openapi"])[:3]
     if major_minor not in ("3.0", "3.1"):
         raise ValueError(f"unsupported OpenAPI version {data['openapi']}")

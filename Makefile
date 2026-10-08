@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets demo up down eval eval-live eval-replay perf-ab target clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets demo up down eval eval-live eval-replay perf-ab target example-tasks clean
 
 install:
 	$(UV) sync
@@ -34,6 +34,10 @@ secrets:
 # Run the target API locally (no Docker). BUGS=B01,B04 PERF_BUGS=P01 make target
 target:
 	$(UV) run uvicorn target_api.app.main:app --port 8000
+
+# Second, differently shaped target: Swagger 2.0 contract, X-API-Key auth. BUGS=T01,T02 make example-tasks
+example-tasks:
+	$(UV) run uvicorn examples.tasks_api.app:app --port 8001
 
 # Full stack: target API, Phoenix, Collector, Prometheus, Grafana, cAdvisor.
 up:

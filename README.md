@@ -59,6 +59,22 @@ make demo                                 # functional run + perf A/B against th
 uv run agentqa serve                      # http://127.0.0.1:8088 — runs, findings, timeline, ledger
 ```
 
+A second, differently shaped target ships in `examples/tasks_api/`: a task tracker whose contract is a
+**Swagger 2.0** file and whose auth is an **`X-API-Key`** header. Start it with some bugs on and point
+AgentQA at it:
+
+```bash
+BUGS=T02,T04 make example-tasks           # terminal 1: http://127.0.0.1:8001
+uv run agentqa run --target-config examples/tasks_api/agentqa_target.yaml --base-url http://127.0.0.1:8001
+```
+
+With the simulated models this finds the two spec-visible bugs (an unvalidated enum filter and a
+pagination off-by-one) from zero-token Tier 0 tests and nothing on a clean build; the two
+business-rule bugs (T01 reading another user's task, T03 completing a task twice) need real
+models. To test your own API, give `--spec` a Swagger 2.0 or OpenAPI 3 file or URL, `--docs` your
+requirements, and a target config like the one above (bearer or API-key auth, `sandbox: false`
+keeps the run read-only).
+
 Real models: copy `.env.example` to `.env`, add keys, and set `AGENTQA_PROFILE=free|mixed|premium`.
 With Docker, `make up` starts Phoenix (:6006), Grafana (:3000), Prometheus and the Collector, and
 `make demo` exports traces and metrics to them.
@@ -202,7 +218,7 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 │   ├── prompts.py       loads the versioned prompts in prompts/
 │   ├── pricing.py       cost ledger: actual and list-equivalent USD
 │   └── ratelimit.py, resilience.py, types.py
-├── ingest/              no-LLM ingestion: OpenAPI parsing, chunking, injection scan, local embeddings,
+├── ingest/              no-LLM ingestion: OpenAPI 3 parsing (Swagger 2.0 converted on load), chunking, injection scan, local embeddings,
 │                        BM25, Chroma vector store and hybrid retrieval (ADR 0004)
 ├── agents/
 │   ├── synthesizer.py   Tier 0: tests derived from the spec by code, zero tokens
@@ -233,6 +249,8 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 prompts/                 versioned prompt templates (front matter + system/user sections), one per role
 config/                  providers, model profiles (free/mixed/premium/simulated), pricing with
                          "as of" dates, guardrails, dispatch thresholds, perf defaults
+examples/tasks_api/      a second sample target: Swagger 2.0 contract, X-API-Key auth, bugs T01-T04, its own
+                         requirements doc and target config (`make example-tasks`)
 target_api/              the system under test
 ├── app/                 FastAPI + SQLite Orders and Invoicing API; bugs.py switches seeded bugs on
 ├── bugs.yaml            the 12 functional bugs (B01–B12) with category, endpoint and expected behaviour
@@ -271,6 +289,7 @@ Make targets:
 | `make lint` · `make fmt` · `make typecheck` | ruff + mypy · auto-fix and format · mypy only |
 | `make test` · `make test-fast` · `make cov` | full suite · skip tests marked slow · with coverage |
 | `make secrets` | secret scan over tracked files |
+| `make example-tasks` | run the Tasks API example on :8001 (`BUGS=T01,T04 make example-tasks`) |
 | `make target` | run the demo API on :8000 (`BUGS=B01 PERF_BUGS=P01 make target`) |
 | `make up` · `make down` | start or stop the Docker observability stack |
 | `make demo` | the 5-minute demo (functional run plus perf A/B) |
