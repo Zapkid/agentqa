@@ -1,5 +1,49 @@
 # AgentQA
 
+**An AI tester for APIs that you can trust, audit and afford.** Give it your API's technical
+description and the requirements your team already wrote. It plans the tests, writes and runs them,
+explains every failure with evidence, and load-tests the service, at a cost you can see and cap.
+
+## Why teams care
+Every app you use, from banking to food delivery, runs on APIs, and every release risks breaking
+one. The expensive bugs are rarely crashes. They are broken business rules: a wrong total, one
+customer seeing another's order, a cancelled order that still ships. Hand-written test suites lag
+behind the product, and QA becomes the bottleneck that slows releases or lets bugs escape.
+
+AI can write tests quickly, but most teams will not adopt it as it stands. It invents endpoints that
+do not exist, reports bugs it cannot prove, and the bill is unpredictable. AgentQA is built around
+those objections:
+
+| What a buyer worries about | What AgentQA does about it |
+|---|---|
+| "Will it make things up?" | **Guardrails.** Tests may only call what the spec defines, run in a sandbox that blocks unapproved hosts and writes, and pass prompt-injection and secret-redaction checks. |
+| "Can we trust its bug reports?" | **Evidence and evals.** Every finding ships with proof and a command to reproduce it. The system is scored against a benchmark API with planted bugs, so you see how many it finds and how often it is wrong, and a CI gate fails the build if quality drops. |
+| "What will it cost us?" | **Cost-aware routing.** A dispatcher sends easy work to plain code or a cheap model and escalates to a strong model only when the cheap attempt fails verification. Every decision is in a ledger, and budgets and a kill switch cap spend. |
+| "Can we see what it is doing?" | **Observability.** Every agent step, model call, token count and cost is traced (OpenTelemetry), with Phoenix, Prometheus and Grafana wired up to receive it. |
+| "Will it survive real workloads?" | **Orchestration.** A supervisor runs specialised agents (planner, generator, triage, reporter) as a task graph with checkpoints, failure isolation and resumable runs. |
+| "Is it only functional testing?" | **Performance too.** Load tests compare a clean build with a changed one, so only a change beyond measured noise counts as a regression, and the likely cause is named. |
+| "Does it fit how our developers work?" | **Plug-in access.** An MCP server lets coding agents such as Claude Code or Cursor call it directly, and an eval gate and a performance smoke test run in CI on every pull request. |
+
+## What you can show in five minutes
+`make demo` runs the whole story against the bundled Orders API, which has 12 functional bugs and
+6 performance defects planted in it: plan, tests, run, triaged findings with evidence, a performance
+diagnosis and an executive summary, with traces and cost for every step. See
+[docs/DEMO.md](docs/DEMO.md) for a talk track.
+
+## Where it stands
+This is a proof of concept. It shows that the approach works end to end on a controlled benchmark,
+not that it is ready to drop into a client's environment. Getting it production-ready and fitting it
+to each client comes next: their API styles and auth, requirements and data rules, choice of models
+and hosting, CI and reporting, and a measured baseline on their own system. In the bundled benchmark
+the cost-aware strategy found 94% of the planted bugs, against 92% for always using the strongest
+model, at 47% of the cost, and caught 6 of 6 performance defects. **Those numbers come from
+simulated models** (the build environment had no API keys), so they show that the mechanics work,
+not how a particular real model performs. Real-model tables come from `make eval-live`.
+Details and caveats are under [Results](#results) and in
+[docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+
+## In technical terms
+
 **Give it an OpenAPI spec and the requirement docs your product team already wrote. Get back a
 risk-ranked test plan, executable API tests, a run, triaged findings with evidence, a performance
 diagnosis and an executive summary.** The whole system is observable, guarded and measured, and an
@@ -58,6 +102,22 @@ uv sync                                   # Python 3.12, uv
 make demo                                 # functional run + perf A/B against the bundled Orders API
 uv run agentqa serve                      # http://127.0.0.1:8088 — runs, findings, timeline, ledger
 ```
+
+A second, differently shaped target ships in `examples/tasks_api/`: a task tracker whose contract is a
+**Swagger 2.0** file and whose auth is an **`X-API-Key`** header. Start it with some bugs on and point
+AgentQA at it:
+
+```bash
+BUGS=T02,T04 make example-tasks           # terminal 1: http://127.0.0.1:8001
+uv run agentqa run --target-config examples/tasks_api/agentqa_target.yaml --base-url http://127.0.0.1:8001
+```
+
+With the simulated models this finds the two spec-visible bugs (an unvalidated enum filter and a
+pagination off-by-one) from zero-token Tier 0 tests and nothing on a clean build; the two
+business-rule bugs (T01 reading another user's task, T03 completing a task twice) need real
+models. To test your own API, give `--spec` a Swagger 2.0 or OpenAPI 3 file or URL, `--docs` your
+requirements, and a target config like the one above (bearer or API-key auth, `sandbox: false`
+keeps the run read-only).
 
 Real models: copy `.env.example` to `.env`, add keys, and set `AGENTQA_PROFILE=free|mixed|premium`.
 With Docker, `make up` starts Phoenix (:6006), Grafana (:3000), Prometheus and the Collector, and
@@ -202,7 +262,7 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 │   ├── prompts.py       loads the versioned prompts in prompts/
 │   ├── pricing.py       cost ledger: actual and list-equivalent USD
 │   └── ratelimit.py, resilience.py, types.py
-├── ingest/              no-LLM ingestion: OpenAPI parsing, chunking, injection scan, local embeddings,
+├── ingest/              no-LLM ingestion: OpenAPI 3 parsing (Swagger 2.0 converted on load), chunking, injection scan, local embeddings,
 │                        BM25, Chroma vector store and hybrid retrieval (ADR 0004)
 ├── agents/
 │   ├── synthesizer.py   Tier 0: tests derived from the spec by code, zero tokens
@@ -233,6 +293,8 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 prompts/                 versioned prompt templates (front matter + system/user sections), one per role
 config/                  providers, model profiles (free/mixed/premium/simulated), pricing with
                          "as of" dates, guardrails, dispatch thresholds, perf defaults
+examples/tasks_api/      a second sample target: Swagger 2.0 contract, X-API-Key auth, bugs T01-T04, its own
+                         requirements doc and target config (`make example-tasks`)
 target_api/              the system under test
 ├── app/                 FastAPI + SQLite Orders and Invoicing API; bugs.py switches seeded bugs on
 ├── bugs.yaml            the 12 functional bugs (B01–B12) with category, endpoint and expected behaviour
@@ -271,6 +333,7 @@ Make targets:
 | `make lint` · `make fmt` · `make typecheck` | ruff + mypy · auto-fix and format · mypy only |
 | `make test` · `make test-fast` · `make cov` | full suite · skip tests marked slow · with coverage |
 | `make secrets` | secret scan over tracked files |
+| `make example-tasks` | run the Tasks API example on :8001 (`BUGS=T01,T04 make example-tasks`) |
 | `make target` | run the demo API on :8000 (`BUGS=B01 PERF_BUGS=P01 make target`) |
 | `make up` · `make down` | start or stop the Docker observability stack |
 | `make demo` | the 5-minute demo (functional run plus perf A/B) |

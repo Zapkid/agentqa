@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -17,7 +18,10 @@ class RoleAuth(BaseModel):
 
 
 class AuthConfig(BaseModel):
-    scheme: str = "bearer"
+    """``bearer`` sends ``Authorization: Bearer <token>``; ``api_key`` sends ``<header>: <token>``."""
+
+    scheme: Literal["bearer", "api_key"] = "bearer"
+    header: str = "X-API-Key"  # only used by the api_key scheme
     roles: dict[str, RoleAuth] = Field(default_factory=dict)
 
 
@@ -42,6 +46,8 @@ class TargetConfig(BaseModel):
 
     def headers(self, role: str) -> dict[str, str]:
         r = self.auth.roles[role]
+        if self.auth.scheme == "api_key":
+            return {self.auth.header: r.token}
         return {"Authorization": f"Bearer {r.token}"}
 
     @property

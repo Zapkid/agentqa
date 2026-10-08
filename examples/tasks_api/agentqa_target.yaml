@@ -1,0 +1,13 @@
+# How AgentQA talks to the Tasks API. The keys are sandbox fixtures for the in-memory demo
+# service, not secrets. Start the service with:  make example-tasks
+name: tasks-api
+spec: examples/tasks_api/swagger.json          # Swagger 2.0; converted to OpenAPI 3 on load
+docs: examples/tasks_api/docs
+sandbox: true                                  # mutations allowed (declared sandbox target)
+auth:
+  scheme: api_key
+  header: X-API-Key
+  roles:
+    admin: {token: key-admin}
+    customer: {token: key-alice, customer_id: 30ce06d3-2251-5a32-8056-6063836b651e}
+    other_customer: {token: key-bob, customer_id: 87f3212d-fefa-5805-8189-266259554a16}

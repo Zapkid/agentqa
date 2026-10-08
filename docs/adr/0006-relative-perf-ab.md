@@ -27,3 +27,11 @@ Shared CI runners and a shared build host are noisy; absolute latency thresholds
 - The LLM never sees raw logs: deterministic code builds one compact evidence bundle per
   comparison; a rule-based diagnosis is shown next to the model's so disagreements are visible.
 - Absolute numbers appear only with the host described, and are labelled as such.
+
+## Update (2026-10-08)
+The `perf-ab-smoke` CI job flagged a clean build against itself: its band came from a single
+clean pair, which is too few samples on a shared runner. `agentqa perf ab` now takes
+`--clean-repeats` (default 2) and builds the band from all of them. Local check: three
+clean-vs-clean runs were not flagged and the P01 candidate was. One local run showed a 3.4x p95
+spread between repeats, which widens the band (it takes the worst repeat); a robust statistic or
+more repeats is the next step if that matters on CI.

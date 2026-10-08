@@ -61,7 +61,7 @@ ignore = ["RUF001", "RUF002", "RUF003", "B008", "E501", "SIM108", "RUF007", "SIM
 
 [tool.mypy]
 python_version = "3.12"
-packages = ["agentqa", "target_api"]
+packages = ["agentqa", "target_api", "examples"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 disallow_untyped_defs = true

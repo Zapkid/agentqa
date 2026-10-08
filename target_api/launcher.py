@@ -37,6 +37,7 @@ class TargetServer:
         cpu_limit_s: int | None = None,
         cpus: set[int] | None = None,
         code_root: Path | None = None,
+        app: str = "target_api.app.main:app",
     ) -> None:
         self.bugs = list(bugs)
         self.perf_bugs = list(perf_bugs)
@@ -49,6 +50,7 @@ class TargetServer:
         self.cpus = cpus
         # another checkout (e.g. main) to run the baseline build from, for PR A/B checks
         self.code_root = code_root or REPO_ROOT
+        self.app = app  # module:attribute of the ASGI app, e.g. examples.tasks_api.app:app
         self.proc: subprocess.Popen[bytes] | None = None
 
     @property
@@ -74,7 +76,7 @@ class TargetServer:
             sys.executable,
             "-m",
             "uvicorn",
-            "target_api.app.main:app",
+            self.app,
             "--host",
             "127.0.0.1",
             "--port",

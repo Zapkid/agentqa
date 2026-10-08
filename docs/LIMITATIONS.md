@@ -30,6 +30,10 @@ Honest list, kept current. If something in the README sounds stronger than this 
   verified against the registries. No Grafana or Phoenix screenshots exist yet.
 - The pipeline never needs Docker: target builds run as local uvicorn subprocesses, and every run
   saves its spans to `spans.jsonl`, which the run page and the tests read.
+- **No third-party API has been tested.** The build host's network policy denies every outside
+  host (checked: petstore3.swagger.io, httpbin.org, restful-booker, dummyjson, fakestoreapi,
+  realworld). The Swagger 2.0 and API-key support is exercised only by the local Tasks API
+  (`examples/tasks_api/`) and a hand-built document. Expect gaps on real-world specs.
 - **Gemini docs were unreachable** from the build host; Gemini model IDs and prices come from
   third-party summaries and the SDK, flagged `verify_before_use` in `config/pricing.yaml`. OpenRouter
   `:free` model IDs and their "list-equivalent" prices are assumptions; free-tier model lists rotate.
@@ -59,6 +63,11 @@ Honest list, kept current. If something in the README sounds stronger than this 
   scored as product bugs.
 
 ## 4. Not implemented (or only partly)
+- Input formats and auth (ADR 0009): Swagger 2.0 is converted, not parsed natively; auth is a
+  configured bearer token or API key only (no basic auth, no OAuth token flows); external `$ref`s
+  and XML bodies are unsupported.
+- The simulated planner/generator are written for the bundled Orders API; against any other API
+  with `AGENTQA_PROFILE=simulated` only the Tier 0 (spec-derived) tests are produced.
 - F14 stretch goals: Playwright UI generation, LangGraph adapter, Slack alerts.
 - Access control, multi-tenancy, tamper-evident audit storage (non-goals; see `docs/ENTERPRISE.md`).
 - Gemini explicit context caching (`caches.create`); the adapter relies on implicit caching and
