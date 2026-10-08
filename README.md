@@ -1,5 +1,32 @@
 # AgentQA
 
+## What is this, for a 10-year-old?
+
+Imagine you built a toy vending machine. Before anyone uses it, you want to be sure it works:
+does it give you the right snack, does it give the right change, and does it say "no" when you put
+in a button instead of a coin?
+
+Checking all that by hand takes ages, so people write a long list of little tests. But the list is
+always out of date, because the machine and its rulebook keep changing.
+
+**AgentQA is a robot helper that does the checking for you.** You give it two things: the machine's
+instruction sheet (which buttons exist and what they should do) and the rulebook (what the machine is
+*supposed* to do). The robot then:
+
+1. **Reads** both and decides what is most important to check.
+2. **Writes** the tests, using the cheap, quick helper for easy ones and the clever, expensive helper
+   only for hard ones, to save money.
+3. **Tries them out** on the machine and notices what goes wrong.
+4. **Explains** each problem, shows proof, and tells you how to see it yourself.
+5. **Checks speed too**: does the machine slow to a crawl when lots of people use it at once?
+
+Robots make mistakes, so this project adds safety rails and measures how well it all works. It makes
+sure the robot only tests things that really exist, never touches machines it should not, and
+counts how many hidden problems it actually finds. That is the real goal: to see whether a robot
+tester can be **useful, careful and affordable** at the same time.
+
+## In technical terms
+
 **Give it an OpenAPI spec and the requirement docs your product team already wrote. Get back a
 risk-ranked test plan, executable API tests, a run, triaged findings with evidence, a performance
 diagnosis and an executive summary.** The whole system is observable, guarded and measured, and an
