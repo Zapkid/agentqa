@@ -33,12 +33,13 @@ diagnosis and an executive summary, with traces and cost for every step. See
 ## Where it stands
 This is a proof of concept. It shows that the approach works end to end on a controlled benchmark,
 not that it is ready to drop into a client's environment. Getting it production-ready and fitting it
-to each client comes next: their API styles and auth, requirements and data rules, choice of models and
-hosting, CI and reporting, and a measured baseline on their own system. In the bundled benchmark the cost-aware strategy found 94% of the planted
-bugs, against 92% for always using the strongest model, at 47% of the cost, and caught 6 of 6
-performance defects. **Those numbers come from simulated models** (the build environment had no API
-keys), so they show that the mechanics work, not how a particular real model performs. Real-model
-tables come from `make eval-live`. Details and caveats are under [Results](#results) and in
+to each client comes next: their API styles and auth, requirements and data rules, choice of models
+and hosting, CI and reporting, and a measured baseline on their own system. In the bundled benchmark
+the cost-aware strategy found 94% of the planted bugs, against 92% for always using the strongest
+model, at 47% of the cost, and caught 6 of 6 performance defects. **Those numbers come from
+simulated models** (the build environment had no API keys), so they show that the mechanics work,
+not how a particular real model performs. Real-model tables come from `make eval-live`.
+Details and caveats are under [Results](#results) and in
 [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## In technical terms
