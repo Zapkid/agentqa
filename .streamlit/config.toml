@@ -1,0 +1,12 @@
+# Veroniqa (agentqa/veroniqa/app.py). Local use: bind to loopback, cap uploads at the knowledge
+# base's own 5 MB limit, no usage telemetry, no "Deploy" button.
+[server]
+address = "127.0.0.1"
+maxUploadSize = 5
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

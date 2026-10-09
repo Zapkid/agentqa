@@ -202,7 +202,7 @@ class Veroniqa:
                 action="list_sources",
             )
         rows = [
-            f"- **{s.name}** ({s.kind}, {s.chunks} passages"
+            f"- **{s.name}** ({s.kind}, {s.chunks} passage{'' if s.chunks == 1 else 's'}"
             + (f", {s.quarantined} quarantined" if s.quarantined else "")
             + ")"
             for s in sources

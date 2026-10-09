@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Annotated, Any
@@ -219,6 +220,34 @@ def killswitch(
         typer.echo("kill switch released")
     else:
         typer.echo(f"kill switch engaged: {ks.engage(reason)}")
+
+
+@app.command()
+def veroniqa(port: int = 8501) -> None:
+    """Open Veroniqa, the chat interface over AgentQA (Streamlit, bound to 127.0.0.1)."""
+    import subprocess
+
+    app_path = REPO_ROOT / "agentqa/veroniqa/app.py"
+    subprocess.run(  # noqa: S603 - streamlit with fixed arguments
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(app_path),
+            "--server.address",
+            "127.0.0.1",
+            "--server.port",
+            str(port),
+            "--server.maxUploadSize",
+            "5",
+            "--browser.gatherUsageStats",
+            "false",
+            "--client.toolbarMode",
+            "minimal",
+        ],
+        check=False,
+    )
 
 
 @app.command()
