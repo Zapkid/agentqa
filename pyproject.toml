@@ -28,6 +28,8 @@ dependencies = [
   "psutil>=7.2,<8",
   "pytest>=9.1,<10",  # run-time: the sandboxed executor runs generated tests with it
   "ruff>=0.16,<0.17",  # run-time: static checks on generated tests
+  "streamlit>=1.65,<2",  # Veroniqa UI
+  "pypdf>=6.19,<7",  # text extraction for uploaded PDFs
 ]
 
 [project.optional-dependencies]
