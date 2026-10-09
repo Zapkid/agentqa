@@ -31,7 +31,7 @@ diagnosis and an executive summary, with traces and cost for every step. See
 [docs/DEMO.md](docs/DEMO.md) for a talk track. `make veroniqa` opens the same features as a chat:
 upload requirements, ask questions with cited answers, and say "run the tests".
 
-**Try VeroniQA online** at <https://veroniqa.vercel.app>, with the videos at
+**Try VeroniQA online** at <https://veroniqa.vercel.app>, with the introduction video at
 <https://veroniqa.vercel.app/watch>. The public demo gives each visitor a private, temporary
 workspace preloaded with the Orders API demo. It uses simulated models and only runs tests against
 the bundled API. How it is built and deployed: [docs/DEPLOY.md](docs/DEPLOY.md).
@@ -325,7 +325,7 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 ├── veroniqa/            the VeroniQA agent: projects.py, knowledge.py (uploads, chunking, injection
 │                        scan, per-project vector store), fetch.py (SSRF-safe links), rag.py (cited
 │                        answers), agent.py (routing to actions), runs.py, app.py (Streamlit UI),
-│                        hosted.py and server.py (the public demo: workspaces, /watch, /videos)
+│                        hosted.py and server.py (public demo: workspaces, /watch, intro video)
 └── sim/                 the rule libraries behind the simulated models
 
 prompts/                 versioned prompt templates (front matter + system/user sections), one per role
@@ -359,7 +359,7 @@ scripts/                 demo.py (`make demo`), secret_scan.py (pre-commit and C
                          engine, storyboards, screenshot capture, the narrated intro with its music
                          generator and voice check; `make videos`, `make video-intro`)
 Dockerfile.vercel        the public VeroniQA demo as a container image (see docs/DEPLOY.md)
-media/                   videos/ (rendered videos, poster frames and the intro's subtitles) and
+media/                   videos/ (rendered videos, the intro's poster frame and subtitles) and
                          veroniqa/ (app screenshots, the run they show and element positions for
                          highlights, captured by scripts/videos/capture_veroniqa.py)
 tests/                   unit and end-to-end tests for every package (fixtures/petstore.yaml is a

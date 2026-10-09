@@ -48,8 +48,8 @@ target:
 veroniqa:
 	$(UV) run agentqa veroniqa
 
-# The public-demo build (docs/DEPLOY.md): private workspaces, simulated models, the watch page
-# and the videos, on http://127.0.0.1:8502.
+# The public-demo build (docs/DEPLOY.md): private workspaces, simulated models, and the watch
+# page with the introduction video, on http://127.0.0.1:8502.
 veroniqa-hosted:
 	VERONIQA_HOSTED=1 AGENTQA_HOME=.agentqa/hosted $(UV) run uvicorn agentqa.veroniqa.server:app --host 127.0.0.1 --port 8502
 

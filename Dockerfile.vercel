@@ -24,7 +24,7 @@ COPY target_api ./target_api
 COPY config ./config
 COPY prompts ./prompts
 COPY .streamlit ./.streamlit
-COPY media/videos ./media/videos
+COPY media/videos/veroniqa-intro.mp4 media/videos/veroniqa-intro.jpg ./media/videos/
 RUN uv sync --locked --no-dev
 
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin veroniqa

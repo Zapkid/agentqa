@@ -80,22 +80,16 @@ def test_hosted_app_gives_each_visitor_a_demo_workspace() -> None:
     assert _wid(again) == wid  # the link brings the same workspace back
 
 
-def test_watch_page_captions_and_video_routes() -> None:
+def test_watch_page_serves_only_the_introduction() -> None:
     client = TestClient(Starlette(routes=server.app._user_routes))
     page = client.get("/watch")
     assert page.status_code == 200 and "Content-Security-Policy" in page.headers
-    for name in ("veroniqa-intro", "01-cost-vs-quality", "02-trust-measured", "03-meet-veroniqa"):
-        assert f"/videos/{name}.mp4" in page.text
-        assert (ROOT / f"media/videos/{name}.jpg").exists()  # poster frame
-    vtt = client.get("/videos/veroniqa-intro.vtt")
-    assert vtt.headers["content-type"].startswith("text/vtt")
-    assert vtt.text.startswith("WEBVTT\n") and "00:00:01.800 --> " in vtt.text
+    assert (
+        '<video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg"' in page.text
+    )
+    assert page.text.count("<video") == 1
     part = client.get("/videos/veroniqa-intro.mp4", headers={"Range": "bytes=0-99"})
     assert part.status_code == 206 and len(part.content) == 100
-    assert client.get("/videos/../pyproject.toml").status_code == 404
-
-
-def test_srt_to_vtt() -> None:
-    assert server.srt_to_vtt("1\r\n00:00:01,800 --> 00:00:02,000\r\nHi\r\n") == (
-        "WEBVTT\n\n1\n00:00:01.800 --> 00:00:02.000\nHi\n"
-    )
+    assert client.get("/videos/veroniqa-intro.jpg").headers["content-type"] == "image/jpeg"
+    for other in ("01-cost-vs-quality.mp4", "veroniqa-intro.srt", "../pyproject.toml"):
+        assert client.get(f"/videos/{other}").status_code == 404

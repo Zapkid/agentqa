@@ -1,13 +1,16 @@
 # Deploying the VeroniQA public demo
 
-The public demo is VeroniQA on its own URL (planned: <https://veroniqa.vercel.app>), with the
-videos on the same site:
+The public demo is VeroniQA on its own URL (planned: <https://veroniqa.vercel.app>), with its
+introduction video on the same site:
 
 | path | what |
 |---|---|
 | `/` | the VeroniQA app (Streamlit): chat, knowledge, test runs, and a **Watch** tab |
-| `/watch` | a plain page with the narrated introduction (captions on) and the three short films |
-| `/videos/<name>.mp4` | the videos themselves, served with range requests so they stream and seek |
+| `/watch` | a plain page with the narrated introduction (captions burned in) |
+| `/videos/veroniqa-intro.mp4` | the video itself, served with range requests so it streams and seeks |
+
+Only the introduction is hosted; the three short promo films stay in the repository
+(`media/videos/`).
 
 One ASGI app serves all three: `agentqa/veroniqa/server.py` wraps the Streamlit script in
 Streamlit's `st.App` and adds the extra routes. It runs as a container image on Vercel
@@ -51,6 +54,6 @@ The image runs as an unprivileged user, listens on `$PORT` and writes only under
 ## Run the same thing locally
 
 ```bash
-make veroniqa-hosted     # hosted mode on http://127.0.0.1:8502 (the UI, /watch and /videos)
+make veroniqa-hosted     # hosted mode on http://127.0.0.1:8502 (the UI, /watch and the video)
 make veroniqa            # the normal single-user app on http://127.0.0.1:8501
 ```
