@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa videos clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa videos video-intro clean
 
 install:
 	$(UV) sync
@@ -53,6 +53,13 @@ veroniqa:
 #   uv run --with playwright==1.55.0 python scripts/videos/capture_veroniqa.py
 videos:
 	$(PY) scripts/videos/render.py
+
+# Narrated 1080p introduction to Veroniqa (voice: Kokoro-82M, run locally; music: generated).
+# The second command checks the soundtrack with an independent speech recogniser.
+TTS_DEPS := --with kokoro-onnx==0.6.1 --with soundfile
+video-intro:
+	$(UV) run $(TTS_DEPS) python scripts/videos/veroniqa_intro.py
+	$(UV) run $(TTS_DEPS) --with sherpa-onnx python scripts/videos/check_voice.py
 
 # Second, differently shaped target: Swagger 2.0 contract, X-API-Key auth. BUGS=T01,T02 make example-tasks
 example-tasks:
