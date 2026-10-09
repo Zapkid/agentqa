@@ -109,6 +109,10 @@ with st.sidebar:
     projects = list_projects(root)
     slugs = [p.slug for p in projects]
     names = {p.slug: p.config.name for p in projects}
+    # A project created on the previous run is selected here, before the selectbox exists:
+    # Streamlit forbids changing a widget's state after the widget is drawn.
+    if "select_project" in st.session_state:
+        st.session_state.project = st.session_state.pop("select_project")
     if "project" not in st.session_state or st.session_state.project not in slugs:
         st.session_state.project = slugs[0] if slugs else None
     if slugs:
@@ -121,13 +125,13 @@ with st.sidebar:
         if submitted:
             try:
                 created = create_project(name, description, root=root)
-                st.session_state.project = created.slug
+                st.session_state.select_project = created.slug
                 st.rerun()
             except ValueError as exc:
                 st.error(str(exc))
         if st.button("Create the Orders API demo project"):
             with st.spinner("Copying the demo docs into a new project..."):
-                st.session_state.project = create_demo_project(root).slug
+                st.session_state.select_project = create_demo_project(root).slug
             st.rerun()
 
 slug: str | None = st.session_state.get("project")

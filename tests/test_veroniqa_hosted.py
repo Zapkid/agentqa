@@ -149,3 +149,14 @@ def test_robots_sitemap_llms_and_favicon() -> None:
     llms = client.get("/llms.txt").text
     assert llms.startswith("# VeroniQA\n\n> ") and "simulated models" in llms
     assert client.get("/favicon.svg").headers["content-type"] == "image/svg+xml"
+
+
+def test_hosted_visitor_can_create_a_project() -> None:
+    at = AppTest.from_file(APP, default_timeout=120)
+    at.run()
+    assert at.header[0].value == "Orders API demo"
+    next(t for t in at.text_input if t.label == "Name").set_value("Billing API")
+    next(b for b in at.button if b.label == "Create project").click().run()
+    assert not at.exception, at.exception
+    assert at.header[0].value == "Billing API"
+    assert (hosted.workspace_root(_wid(at)) / "billing-api" / "project.yaml").exists()
