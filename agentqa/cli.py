@@ -256,7 +256,7 @@ def eval_cmd(
 ) -> None:
     """Run eval suites and write results/<date>-<commit>.json and RESULTS.md."""
     from agentqa.evals import run as ev
-    from agentqa.evals.report import render_results
+    from agentqa.evals.report import latest_results, render_results, update_readme
 
     if gate_check:
         ok, detail = ev.gate(baseline)
@@ -294,10 +294,10 @@ def eval_cmd(
         perf_path = ev.write_results(
             ev.perf_benchmark(iterations=perf_iterations, log=typer.echo), "perf"
         )
-    results = sorted((REPO_ROOT / "results").glob("*.json"), key=lambda p: p.stat().st_mtime)
-    func_path = func_path or next((p for p in reversed(results) if "perf" not in p.name), None)
-    perf_path = perf_path or next((p for p in reversed(results) if "perf" in p.name), None)
+    latest_func, latest_perf = latest_results()
+    func_path, perf_path = func_path or latest_func, perf_path or latest_perf
     typer.echo(f"wrote {render_results(func_path, perf_path)}")
+    typer.echo(f"wrote {update_readme(func_path, perf_path)}")
 
 
 perf_app = typer.Typer(help="Performance tests: workload model, load runs, A/B, diagnosis.")
