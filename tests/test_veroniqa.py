@@ -107,7 +107,7 @@ def test_knowledge_add_retrieve_remove_and_quarantine(tmp_path: Path) -> None:
     [
         ("file:///etc/passwd", "93.184.216.34", "only http"),
         ("ftp://example.com/x", "93.184.216.34", "only http"),
-        ("http://user:pw@example.com/", "93.184.216.34", "credentials"),
+        ("http://user@example.com/", "93.184.216.34", "credentials"),
         ("http://localhost/", "127.0.0.1", "non-public"),
         ("http://intranet/", "10.1.2.3", "non-public"),
         ("http://metadata/", "169.254.169.254", "non-public"),
