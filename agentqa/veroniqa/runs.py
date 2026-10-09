@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
 from agentqa.config import REPO_ROOT
+from agentqa.veroniqa.hosted import hosted
 from agentqa.veroniqa.projects import Project
 
 DEMO_TARGET = REPO_ROOT / "target_api/agentqa_target.yaml"
 BUG_ID = re.compile(r"\bB(0?[1-9]|1[0-2])\b", re.IGNORECASE)
+HOSTED_RUN_SLOTS = threading.BoundedSemaphore(2)  # concurrent runs on a public server
 
 
 class NotRunnable(ValueError):
@@ -45,6 +48,22 @@ def demo_build(bugs: str) -> str:
 def run_project_tests(project: Project, profile: str, bugs: str = "") -> Any:
     """Run the full AgentQA pipeline for a project. The project's documents are the requirement
     docs. Returns the pipeline's RunOutput."""
+    if not hosted():
+        return _run(project, profile, bugs)
+    if not project.config.local_demo:
+        raise NotRunnable(
+            "In the public demo, tests only run against the bundled Orders API (the demo "
+            "project). To test your own API, run VeroniQA yourself with `make veroniqa`."
+        )
+    if not HOSTED_RUN_SLOTS.acquire(blocking=False):
+        raise NotRunnable("Other visitors' runs are using the server. Try again in a minute.")
+    try:
+        return _run(project, "simulated", bugs)
+    finally:
+        HOSTED_RUN_SLOTS.release()
+
+
+def _run(project: Project, profile: str, bugs: str) -> Any:
     from agentqa.cli import execute_run
 
     cfg = project.config

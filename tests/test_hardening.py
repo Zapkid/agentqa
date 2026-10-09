@@ -97,8 +97,9 @@ def test_compose_publishes_ports_on_loopback_only() -> None:
     assert grafana["GF_AUTH_ANONYMOUS_ORG_ROLE"] != "Admin"
 
 
-def test_target_image_runs_as_non_root() -> None:
-    lines = (ROOT / "deploy/Dockerfile.target").read_text().splitlines()
+@pytest.mark.parametrize("dockerfile", ["deploy/Dockerfile.target", "Dockerfile.vercel"])
+def test_images_run_as_non_root(dockerfile: str) -> None:
+    lines = (ROOT / dockerfile).read_text().splitlines()
     users = [ln.split()[1] for ln in lines if ln.startswith("USER ")]
     assert users and users[-1] not in {"root", "0"}
 

@@ -3,7 +3,7 @@
 Run it with `make veroniqa` or `uv run agentqa veroniqa`: it binds to 127.0.0.1. Everything the UI
 does goes through agentqa.veroniqa, so the chat, the buttons and the tests share one code path.
 Markdown is rendered with Streamlit's default escaping (no raw HTML), because documents, pages and
-reports are untrusted.
+reports are untrusted. With VERONIQA_HOSTED=1 it runs as a public demo (see hosted.py).
 """
 
 from __future__ import annotations
@@ -15,7 +15,14 @@ from typing import Any
 
 import streamlit as st
 
-from agentqa.veroniqa import Reply, VeroniQA, create_demo_project, create_project, list_projects
+from agentqa.veroniqa import (
+    Reply,
+    VeroniQA,
+    create_demo_project,
+    create_project,
+    hosted,
+    list_projects,
+)
 from agentqa.veroniqa.fetch import FetchError
 from agentqa.veroniqa.knowledge import UPLOAD_TYPES
 from agentqa.veroniqa.projects import Project, load_project
@@ -23,11 +30,19 @@ from agentqa.veroniqa.runs import NotRunnable, project_runs
 
 PROFILES = ["simulated", "free", "mixed", "premium"]
 BUG_IDS = [f"B{i:02d}" for i in range(1, 13)]
+VIDEOS = Path(__file__).resolve().parents[2] / "media/videos"
+INTRO = VIDEOS / "veroniqa-intro.mp4"
+PROMOS = [
+    ("Cost versus quality", "01-cost-vs-quality.mp4"),
+    ("Trust, measured", "02-trust-measured.mp4"),
+    ("Meet VeroniQA", "03-meet-veroniqa.mp4"),
+]
+HOSTED = hosted.hosted()
 
 st.set_page_config(page_title="VeroniQA · AgentQA", page_icon="🧪", layout="wide")
 
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner=False, max_entries=64)
 def agent(project_root: str, profile: str) -> VeroniQA:
     """One agent (and vector-store client) per project folder and profile."""
     return VeroniQA(Project(Path(project_root)), profile=profile)
@@ -53,22 +68,65 @@ def show_reply(reply: Reply) -> None:
         )
 
 
+def workspace() -> Path | None:
+    """The projects folder for this visitor: a private workspace when hosted, else the default."""
+    if not HOSTED:
+        return None
+    wid = st.query_params.get("w", "")
+    if not hosted.WORKSPACE_ID.match(wid):
+        wid = hosted.new_workspace_id()
+        st.query_params["w"] = wid
+    if "pruned" not in st.session_state:
+        hosted.prune_workspaces(keep=wid)
+        st.session_state.pruned = True
+    hosted.touch(wid)
+    root = hosted.workspace_root(wid)
+    if not list_projects(root):
+        with st.spinner("Setting up your workspace with the Orders API demo project..."):
+            create_demo_project(root)
+    return root
+
+
+def show_videos() -> None:
+    if INTRO.exists():
+        st.subheader("Meet VeroniQA")
+        st.video(str(INTRO), subtitles={"English": str(INTRO.with_suffix(".srt"))})
+    cols = st.columns(len(PROMOS))
+    for col, (title, name) in zip(cols, PROMOS, strict=True):
+        if (VIDEOS / name).exists():
+            col.markdown(f"**{title}**")
+            col.video(str(VIDEOS / name))
+    if HOSTED:
+        st.caption("All four videos are also on [the watch page](/watch).")
+
+
+root = workspace()
+
 # ---------------------------------------------------------------- sidebar: projects and settings
 
 with st.sidebar:
     st.title("VeroniQA")
     st.caption("Your AgentQA assistant: projects, knowledge, tests.")
-    profile = st.selectbox(
-        "Model profile",
-        PROFILES,
-        index=PROFILES.index(os.environ.get("AGENTQA_PROFILE", "simulated"))
-        if os.environ.get("AGENTQA_PROFILE", "simulated") in PROFILES
-        else 0,
-        help="simulated needs no API keys. The others read keys from .env.",
-    )
-    if profile == "simulated":
-        st.info("Simulated models: answers and runs show the mechanics, not a real model.")
-    projects = list_projects()
+    if HOSTED:
+        profile = "simulated"
+        st.info(
+            "Public demo. Models are simulated: answers and runs show the mechanics, not a real "
+            "model. Your workspace is private to this link and temporary, so do not upload "
+            "confidential documents."
+        )
+        st.link_button("Watch the introduction", "/watch", width="stretch")
+    else:
+        profile = st.selectbox(
+            "Model profile",
+            PROFILES,
+            index=PROFILES.index(os.environ.get("AGENTQA_PROFILE", "simulated"))
+            if os.environ.get("AGENTQA_PROFILE", "simulated") in PROFILES
+            else 0,
+            help="simulated needs no API keys. The others read keys from .env.",
+        )
+        if profile == "simulated":
+            st.info("Simulated models: answers and runs show the mechanics, not a real model.")
+    projects = list_projects(root)
     slugs = [p.slug for p in projects]
     names = {p.slug: p.config.name for p in projects}
     if "project" not in st.session_state or st.session_state.project not in slugs:
@@ -82,14 +140,14 @@ with st.sidebar:
             submitted = st.form_submit_button("Create project")
         if submitted:
             try:
-                created = create_project(name, description)
+                created = create_project(name, description, root=root)
                 st.session_state.project = created.slug
                 st.rerun()
             except ValueError as exc:
                 st.error(str(exc))
         if st.button("Create the Orders API demo project"):
             with st.spinner("Copying the demo docs into a new project..."):
-                st.session_state.project = create_demo_project().slug
+                st.session_state.project = create_demo_project(root).slug
             st.rerun()
 
 slug: str | None = st.session_state.get("project")
@@ -99,16 +157,17 @@ if not slug:
         "Create a project in the sidebar, or start with the demo project: the bundled Orders "
         "API, its requirement documents and 12 seeded bugs."
     )
+    show_videos()
     st.stop()
 
-project: Project = load_project(slug)
+project: Project = load_project(slug, root)
 v = agent(str(project.root), profile)
 st.header(project.config.name)
 if project.config.description:
     st.caption(project.config.description)
 
-chat_tab, knowledge_tab, runs_tab, settings_tab = st.tabs(
-    ["Chat", "Knowledge", "Test runs", "Settings"]
+chat_tab, knowledge_tab, runs_tab, settings_tab, watch_tab = st.tabs(
+    ["Chat", "Knowledge", "Test runs", "Settings", "Watch"]
 )
 
 # ---------------------------------------------------------------- chat
@@ -241,26 +300,41 @@ with runs_tab:
 
 with settings_tab:
     cfg = project.config
-    with st.form("settings"):
-        spec = st.text_input("OpenAPI or Swagger spec (file path or http(s) URL)", cfg.spec or "")
-        base_url = st.text_input("Base URL of the API under test", cfg.base_url or "")
-        target = st.text_input(
-            "Target config (YAML: auth scheme, role tokens, sandbox flag)", cfg.target_config or ""
+    if HOSTED:
+        st.info(
+            "In the public demo, tests only run against the bundled Orders API, so this server "
+            "cannot be used to send traffic to other APIs. To test your own API, run VeroniQA "
+            "yourself (`make veroniqa`)."
         )
-        if st.form_submit_button("Save settings"):
-            project.update(
-                spec=spec.strip() or None,
-                base_url=base_url.strip() or None,
-                target_config=target.strip() or None,
+    else:
+        with st.form("settings"):
+            spec = st.text_input(
+                "OpenAPI or Swagger spec (file path or http(s) URL)", cfg.spec or ""
             )
-            st.success("Saved.")
-    spec_file = st.file_uploader("…or upload a spec file", type=["json", "yaml", "yml"])
-    if spec_file is not None and st.button("Use this spec"):
-        dest = project.root / f"spec{Path(spec_file.name).suffix.lower()}"
-        dest.write_bytes(spec_file.getvalue()[:5_000_000])
-        project.update(spec=str(dest))
-        st.success(f"Spec saved to {dest.name}.")
-    st.caption(
-        "Without `sandbox: true` in the target config, runs only use read-only methods. "
-        "Keys and tokens belong in .env, not in project files."
-    )
+            base_url = st.text_input("Base URL of the API under test", cfg.base_url or "")
+            target = st.text_input(
+                "Target config (YAML: auth scheme, role tokens, sandbox flag)",
+                cfg.target_config or "",
+            )
+            if st.form_submit_button("Save settings"):
+                project.update(
+                    spec=spec.strip() or None,
+                    base_url=base_url.strip() or None,
+                    target_config=target.strip() or None,
+                )
+                st.success("Saved.")
+        spec_file = st.file_uploader("…or upload a spec file", type=["json", "yaml", "yml"])
+        if spec_file is not None and st.button("Use this spec"):
+            dest = project.root / f"spec{Path(spec_file.name).suffix.lower()}"
+            dest.write_bytes(spec_file.getvalue()[:5_000_000])
+            project.update(spec=str(dest))
+            st.success(f"Spec saved to {dest.name}.")
+        st.caption(
+            "Without `sandbox: true` in the target config, runs only use read-only methods. "
+            "Keys and tokens belong in .env, not in project files."
+        )
+
+# ---------------------------------------------------------------- watch
+
+with watch_tab:
+    show_videos()

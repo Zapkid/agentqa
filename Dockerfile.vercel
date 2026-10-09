@@ -1,0 +1,41 @@
+# VeroniQA public demo on Vercel (container image function). One ASGI app serves the Streamlit
+# UI at /, the watch page at /watch and the videos at /videos (agentqa/veroniqa/server.py).
+# Hosted mode: per-visitor temporary workspaces, simulated models (no API keys on the server),
+# test runs only against the bundled Orders API. See docs/DEPLOY.md.
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+RUN pip install --no-cache-dir uv==0.11.32
+
+WORKDIR /app
+
+# Dependencies first (cached layer), from the lockfile, without the dev group.
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --locked --no-dev --no-install-project
+
+# Only what the app needs at run time: no tests, docs, scripts, evals or screenshots.
+COPY agentqa ./agentqa
+COPY target_api ./target_api
+COPY config ./config
+COPY prompts ./prompts
+COPY .streamlit ./.streamlit
+COPY media/videos ./media/videos
+RUN uv sync --locked --no-dev
+
+RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin veroniqa
+USER 10001
+
+ENV VERONIQA_HOSTED=1 \
+    AGENTQA_PROFILE=simulated \
+    AGENTQA_HOME=/tmp/veroniqa \
+    AGENTQA_CACHE_DIR=/tmp/veroniqa/cache \
+    HOME=/tmp \
+    PATH="/app/.venv/bin:$PATH"
+
+EXPOSE 8000
+CMD ["sh", "-c", "exec uvicorn agentqa.veroniqa.server:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --log-level warning"]
