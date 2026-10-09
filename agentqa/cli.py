@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Annotated, Any
@@ -222,6 +223,34 @@ def killswitch(
 
 
 @app.command()
+def veroniqa(port: int = 8501) -> None:
+    """Open VeroniQA, the chat interface over AgentQA (Streamlit, bound to 127.0.0.1)."""
+    import subprocess
+
+    app_path = REPO_ROOT / "agentqa/veroniqa/app.py"
+    subprocess.run(  # noqa: S603 - streamlit with fixed arguments
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(app_path),
+            "--server.address",
+            "127.0.0.1",
+            "--server.port",
+            str(port),
+            "--server.maxUploadSize",
+            "5",
+            "--browser.gatherUsageStats",
+            "false",
+            "--client.toolbarMode",
+            "minimal",
+        ],
+        check=False,
+    )
+
+
+@app.command()
 def serve(host: str = "127.0.0.1", port: int = 8088) -> None:
     """Web UI: run history, run detail, eval scoreboard."""
     import uvicorn
@@ -256,7 +285,7 @@ def eval_cmd(
 ) -> None:
     """Run eval suites and write results/<date>-<commit>.json and RESULTS.md."""
     from agentqa.evals import run as ev
-    from agentqa.evals.report import render_results
+    from agentqa.evals.report import latest_results, render_results, update_readme
 
     if gate_check:
         ok, detail = ev.gate(baseline)
@@ -294,10 +323,10 @@ def eval_cmd(
         perf_path = ev.write_results(
             ev.perf_benchmark(iterations=perf_iterations, log=typer.echo), "perf"
         )
-    results = sorted((REPO_ROOT / "results").glob("*.json"), key=lambda p: p.stat().st_mtime)
-    func_path = func_path or next((p for p in reversed(results) if "perf" not in p.name), None)
-    perf_path = perf_path or next((p for p in reversed(results) if "perf" in p.name), None)
+    latest_func, latest_perf = latest_results()
+    func_path, perf_path = func_path or latest_func, perf_path or latest_perf
     typer.echo(f"wrote {render_results(func_path, perf_path)}")
+    typer.echo(f"wrote {update_readme(func_path, perf_path)}")
 
 
 perf_app = typer.Typer(help="Performance tests: workload model, load runs, A/B, diagnosis.")

@@ -105,7 +105,7 @@ def _pyflakes(code: str) -> list[GuardViolation]:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "t.py"
         path.write_text(prelude + code, encoding="utf-8")
-        proc = subprocess.run(
+        proc = subprocess.run(  # noqa: S603 - ruff with fixed arguments on a temp file
             [
                 sys.executable,
                 "-m",

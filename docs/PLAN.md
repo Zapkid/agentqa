@@ -90,3 +90,6 @@ moment it is deferred, not at the end.
 | M9 evals + CI | done with simulated models; live matrix pending keys | `RESULTS.md`, `.github/workflows/` |
 | M10 MCP, UI, memory | done (no GUI-client screenshot) | `tests/test_mcp_server.py`, `tests/test_api.py` |
 | M11 polish | done; demo GIF and dashboard screenshots pending a machine with Docker | README, DEMO, LIMITATIONS, ENTERPRISE |
+| M12 inputs and hardening | done: Swagger 2.0, API-key auth, second sample target, security review | ADR 0009, `docs/SECURITY.md`, `tests/test_hardening.py` |
+| M13 VeroniQA | done with simulated models: projects, knowledge base + RAG, chat over repo features, Streamlit UI | ADR 0010, `tests/test_veroniqa*.py` |
+| M14 promo videos | done: three coded videos from measured data | `scripts/videos/`, `media/videos/` |

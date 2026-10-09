@@ -84,6 +84,24 @@ class VectorStore:
             rankings.append([cid for cid, s in lex.scores(q)[: 2 * k + 4] if s > 0])
         return [(cid, 1.0 / (i + 1)) for i, cid in enumerate(interleave(*rankings, k=k))]
 
+    def get(self, spec_id: str, chunk_ids: list[str]) -> list[dict[str, Any]]:
+        """Stored text and metadata for chunk ids, in the order given (unknown ids are skipped)."""
+        if not chunk_ids:
+            return []
+        got: Any = self.col.get(
+            ids=[f"{spec_id}:{c}" for c in chunk_ids], include=["documents", "metadatas"]
+        )
+        by_id = {
+            str((m or {}).get("chunk_id")): {**(m or {}), "text": d or ""}
+            for m, d in zip(got["metadatas"] or [], got["documents"] or [], strict=True)
+        }
+        return [by_id[c] for c in chunk_ids if c in by_id]
+
+    def delete_doc(self, spec_id: str, doc: str) -> None:
+        """Remove every chunk of one document."""
+        self.col.delete(where=cast(Any, {"$and": [{"spec_id": spec_id}, {"doc": doc}]}))
+        self._bm25.clear()
+
     @staticmethod
     def _meta(spec_id: str, c: Chunk) -> dict[str, Any]:
         return {

@@ -1,0 +1,22 @@
+# Build context for Dockerfile.vercel: the image copies only what the app needs, so keep local
+# state, secrets and bulky folders out of the context entirely.
+.env
+.env.*
+.git
+.venv
+.cache
+.agentqa
+.mypy_cache
+.ruff_cache
+.pytest_cache
+**/__pycache__
+runs
+htmlcov
+tests
+docs
+scripts
+evals
+results
+examples
+deploy
+media/veroniqa

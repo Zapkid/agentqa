@@ -49,7 +49,7 @@ class RoutingStats:
         )
         col = "successes" if success else "failures"
         self.store.execute(
-            f"UPDATE routing_stats SET {col} = {col} + 1, tokens = tokens + ? WHERE task_type=? AND tier=?",
+            f"UPDATE routing_stats SET {col} = {col} + 1, tokens = tokens + ? WHERE task_type=? AND tier=?",  # noqa: S608 - col is one of two literals, never input
             (tokens, task_type, tier),
         )
 

@@ -28,7 +28,7 @@ class AuthConfig(BaseModel):
 class WebhookConfig(BaseModel):
     header: str = "X-Signature"
     algorithm: str = "hmac-sha256"
-    secret_env: str = "TARGET_WEBHOOK_SECRET"
+    secret_env: str = "TARGET_WEBHOOK_SECRET"  # noqa: S105 - this is the name of an environment variable, not a secret
     secret_default: str = ""
 
     @property

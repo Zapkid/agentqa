@@ -28,7 +28,6 @@ from agentqa.target_config import TargetConfig, load_target
 from target_api.launcher import TargetServer
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-CLASSES = ["product_bug", "test_bug", "flaky", "env_issue", "needs_review"]
 
 
 def run_case(

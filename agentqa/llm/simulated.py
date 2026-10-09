@@ -124,7 +124,7 @@ class SimulatedAdapter:
         if skill is None:
             raise ProviderError(f"simulated: unknown model {model}")
         digest = hashlib.sha256((self.seed + model + messages_text(messages)).encode()).hexdigest()
-        rng = random.Random(int(digest[:16], 16))
+        rng = random.Random(int(digest[:16], 16))  # noqa: S311 - seeded simulation, not cryptography
         req = SimRequest(
             model,
             messages,

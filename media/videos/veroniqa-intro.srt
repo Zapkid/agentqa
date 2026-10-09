@@ -1,0 +1,59 @@
+1
+00:00:01,800 --> 00:00:05,646
+Meet VeroniQA, your AI assistant for API testing.
+
+2
+00:00:05,766 --> 00:00:10,086
+She turns your requirements into tests that run, and results you can trust.
+
+3
+00:00:11,586 --> 00:00:19,048
+Start a project, and give her what your team already has: requirement documents, PDF files, or links to your docs.
+
+4
+00:00:19,168 --> 00:00:24,010
+Every source is indexed, and scanned for prompt injection before she ever reads it.
+
+5
+00:00:25,510 --> 00:00:27,538
+Ask a question in plain English.
+
+6
+00:00:27,658 --> 00:00:32,239
+VeroniQA answers from your own documents, and shows the passages she used.
+
+7
+00:00:32,359 --> 00:00:35,685
+If the answer isn't there, she tells you, instead of guessing.
+
+8
+00:00:37,185 --> 00:00:38,747
+Links are fetched safely.
+
+9
+00:00:38,867 --> 00:00:45,316
+Internal and cloud-metadata addresses are refused, so your knowledge base can't be turned against your network.
+
+10
+00:00:46,816 --> 00:00:49,224
+When you're ready, just say: run the tests.
+
+11
+00:00:49,344 --> 00:00:56,886
+VeroniQA plans, writes and runs API tests against your service, then triages every failure, with evidence.
+
+12
+00:00:57,006 --> 00:01:01,550
+In this demo, she found both planted bugs, with 46 tests passing.
+
+13
+00:01:03,050 --> 00:01:09,084
+Behind her, the AgentQA engine gives easy work to cheaper models, and checks every result.
+
+14
+00:01:09,204 --> 00:01:16,294
+On our simulated benchmark, it found 94% of the planted bugs, at 47% of the cost.
+
+15
+00:01:17,794 --> 00:01:21,154
+VeroniQA. Ask, add knowledge, and run the tests.

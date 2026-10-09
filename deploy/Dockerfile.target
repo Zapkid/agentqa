@@ -1,7 +1,11 @@
 FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
-RUN pip install --no-cache-dir "fastapi>=0.115" "uvicorn>=0.32" "pydantic>=2.9" \
-    "opentelemetry-sdk>=1.45" "opentelemetry-exporter-otlp-proto-http>=1.45"
+# Keep these version caps in sync with pyproject.toml.
+RUN pip install --no-cache-dir "fastapi>=0.142,<0.143" "uvicorn>=0.54,<0.55" "pydantic>=2.13,<3" \
+    "opentelemetry-sdk>=1.45,<2" "opentelemetry-exporter-otlp-proto-http>=1.45,<2" \
+ && useradd --system --uid 10001 --no-create-home app
 COPY target_api /app/target_api
+USER app
 EXPOSE 8000
 CMD ["uvicorn", "target_api.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

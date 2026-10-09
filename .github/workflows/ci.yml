@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: {python-version: "3.12"}
-      - run: uv sync
+      - run: uv sync --locked
       - name: Lint
         run: uv run ruff check .
       - name: Types
@@ -28,7 +31,7 @@ jobs:
       - name: Unit and integration tests (fake/simulated LLM, no network)
         run: uv run pytest -m "not slow" --cov --cov-report=term
       - name: End-to-end pipeline, sandbox and MCP tests
-        run: uv run pytest tests/test_pipeline_e2e.py tests/test_executor.py tests/test_mcp_server.py tests/test_example_tasks_api.py target_api/tests/test_seeded_bugs.py
+        run: uv run pytest tests/test_pipeline_e2e.py tests/test_executor.py tests/test_mcp_server.py tests/test_example_tasks_api.py tests/test_veroniqa.py target_api/tests/test_seeded_bugs.py
 
   replay-gate:
     # Replays committed LLM-cache fixtures (cache mode replay_only: any cache miss fails the job),
@@ -41,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: {python-version: "3.12"}
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run agentqa eval --gate
         env:
           AGENTQA_CACHE_MODE: replay_only
@@ -57,7 +60,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: astral-sh/setup-uv@v6
         with: {python-version: "3.12"}
-      - run: uv sync
+      - run: uv sync --locked
       - name: Check out main as the baseline
         run: git worktree add ../baseline origin/main || git worktree add ../baseline HEAD
       - name: A/B smoke (fails on regression beyond noise)

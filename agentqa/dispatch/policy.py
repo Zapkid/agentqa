@@ -28,7 +28,7 @@ class Decision:
 
 
 def _rng(task_id: str) -> random.Random:
-    return random.Random(int(hashlib.sha256(task_id.encode()).hexdigest()[:12], 16))
+    return random.Random(int(hashlib.sha256(task_id.encode()).hexdigest()[:12], 16))  # noqa: S311 - bandit sampling, not cryptography
 
 
 def choose_tier(

@@ -5,38 +5,42 @@ description = "Autonomous, observable, guarded API test agent: OpenAPI spec + re
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-  "pydantic>=2.9",
-  "pyyaml>=6.0",
-  "httpx>=0.28",
-  "fastapi>=0.115",
-  "uvicorn>=0.32",
-  "typer>=0.15",
-  "structlog>=24.4",
-  "jinja2>=3.1",
-  "anthropic>=1.11",
-  "google-genai>=2.28",
-  "openai>=3.26",
-  "chromadb>=1.5",
-  "mcp>=2.3",
-  "opentelemetry-api>=1.45",
-  "opentelemetry-sdk>=1.45",
-  "opentelemetry-exporter-otlp-proto-http>=1.45",
-  "locust>=2.46",
-  "matplotlib>=3.9",
-  "psutil>=6.1",
-  "pytest>=8.3",
-  "ruff>=0.8",
+  # Floors are the versions this project is tested with (see uv.lock); caps stop a silent major
+  # (or, for 0.x packages, minor) upgrade. Dependabot proposes bumps; CI installs with --locked.
+  "pydantic>=2.13,<3",
+  "pyyaml>=6.0,<7",
+  "httpx>=0.28,<0.29",
+  "fastapi>=0.142,<0.143",
+  "uvicorn>=0.54,<0.55",
+  "typer>=0.27,<0.28",
+  "structlog>=26.1,<27",
+  "jinja2>=3.1,<4",
+  "anthropic>=1.11,<2",
+  "google-genai>=2.28,<3",
+  "openai>=3.26,<4",
+  "chromadb>=1.5,<2",
+  "mcp>=2.3,<3",
+  "opentelemetry-api>=1.45,<2",
+  "opentelemetry-sdk>=1.45,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.45,<2",
+  "locust>=2.46,<3",
+  "matplotlib>=3.11,<4",
+  "psutil>=7.2,<8",
+  "pytest>=9.1,<10",  # run-time: the sandboxed executor runs generated tests with it
+  "ruff>=0.16,<0.17",  # run-time: static checks on generated tests
+  "streamlit>=1.65,<2",  # VeroniQA UI
+  "pypdf>=6.19,<7",  # text extraction for uploaded PDFs
 ]
 
 [project.optional-dependencies]
-embeddings = ["fastembed>=0.9"]
+embeddings = ["fastembed>=0.9,<0.10"]
 
 [dependency-groups]
 dev = [
-  "mypy>=1.13",
-  "pytest-cov>=6.0",
-  "types-pyyaml>=6.0",
-  "types-psutil>=6.1",
+  "mypy>=2.4,<3",
+  "pytest-cov>=7.1,<8",
+  "types-pyyaml>=6.0,<7",
+  "types-psutil>=7.2,<8",
 ]
 
 [project.scripts]
@@ -56,8 +60,16 @@ target-version = "py312"
 extend-exclude = ["runs", "evals/fixtures", ".cache"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
-ignore = ["RUF001", "RUF002", "RUF003", "B008", "E501", "SIM108", "RUF007", "SIM102"]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008", "E501", "SIM108", "RUF007", "SIM102",
+  "S101"]  # asserts in shipped code only narrow types for mypy; none guard security
+
+[tool.ruff.lint.per-file-ignores]
+# Security rules (S) apply to shipped code. Tests assert, use fixture credentials and seeded RNGs.
+"tests/**" = ["S105", "S106", "S311"]
+"target_api/tests/**" = ["S105"]
+# Developer scripts call git and docker with fixed arguments.
+"scripts/**" = ["S603", "S607"]
 
 [tool.mypy]
 python_version = "3.12"

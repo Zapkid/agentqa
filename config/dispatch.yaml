@@ -23,4 +23,3 @@ params:
   concurrency: 4
 # Static priors: which task types the LLM handles at all (others go to Tier 0 when deterministic_first is on)
 llm_categories: [auth/permission, state-transition, idempotency, money/precision, webhooks/signatures, time/timezone, data-leak, business-logic]
-t0_categories: [validation, boundary, contract-conformance, error-handling]

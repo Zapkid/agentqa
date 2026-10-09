@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
-from agentqa.config import agentqa_home
+from agentqa.config import agentqa_home, perf_defaults
 from agentqa.ingest.ingestor import ingest
 from agentqa.ingest.vectorstore import VectorStore
 from agentqa.llm.cache import DiskCache
@@ -26,6 +26,14 @@ from agentqa.perf.triage import diagnose
 from agentqa.perf.workload import model_workload
 from agentqa.target_config import TargetConfig
 from target_api.launcher import TargetServer
+
+
+def capped_orders(requested: int) -> int:
+    """Orders to seed, capped by `data_setup_orders_cap` in config/perf_defaults.yaml."""
+    cap = perf_defaults().data_setup_orders_cap
+    if requested > cap:
+        tracing.event("guardrail.load", action="cap_seed_orders", requested=requested, cap=cap)
+    return min(requested, cap)
 
 
 @dataclass
@@ -106,7 +114,7 @@ class PerfSession:
         code_root: Path | None = None,
     ) -> PerfRun:
         wl = self.workload()
-        orders = wl.data_setup_orders if seed_orders is None else seed_orders
+        orders = capped_orders(wl.data_setup_orders if seed_orders is None else seed_orders)
         with TargetServer(perf_bugs=perf_bugs, cpus={0}, code_root=code_root) as srv:
             if orders:
                 srv.seed(orders)

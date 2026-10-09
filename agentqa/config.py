@@ -35,15 +35,12 @@ def _load(name: str) -> dict[str, Any]:
 
 
 class ProviderConfig(BaseModel):
-    api_key_env: str | None = None
     base_url: str | None = None
     free_tier: bool = False
     rpm: int
     tpm: int
     rpd: int
     max_retries: int = 3
-    native_structured_output: bool = True
-    native_prompt_cache: str = "none"
 
 
 class CircuitBreakerConfig(BaseModel):
@@ -159,12 +156,6 @@ class TargetConfig(BaseModel):
     sandbox: bool = False
 
 
-class InjectionConfig(BaseModel):
-    quarantine: bool = True
-    heuristic_threshold: int = 1
-    classifier: bool = True
-
-
 class LoadGuardConfig(BaseModel):
     max_users: int
     max_rps: int
@@ -183,7 +174,6 @@ class GuardrailsFile(BaseModel):
     budget: BudgetConfig
     sandbox: SandboxConfig
     targets: dict[str, TargetConfig]
-    injection: InjectionConfig
     load: LoadGuardConfig
     killswitch: KillswitchConfig
 
@@ -207,7 +197,6 @@ class DispatchFile(BaseModel):
     mechanisms: dict[str, bool]
     params: DispatchParams
     llm_categories: list[str]
-    t0_categories: list[str]
 
     def on(self, mechanism: str) -> bool:
         if mechanism not in self.mechanisms:
