@@ -84,8 +84,14 @@ class KnowledgeBase:
         return self._add("file", name, extract_text(name, data))
 
     def add_link(self, url: str, fetcher: Callable[[str], FetchedPage] = fetch_url) -> Source:
+        """Index a linked page. A link to API docs (an OpenAPI/Swagger file, or a Swagger UI page
+        that loads one) is indexed as a description of every endpoint, and the spec becomes the
+        project's spec if it has none yet."""
         page = fetcher(url)
-        return self._add("link", page.title[:120] or page.url, page.text, url=page.url)
+        source = self._add("link", page.title[:120] or page.url, page.text, url=page.url)
+        if page.spec_url and not self.project.config.spec:
+            self.project.update(spec=page.spec_url)
+        return source
 
     def _add(self, kind: str, name: str, text: str, url: str | None = None) -> Source:
         if not text.strip():

@@ -149,6 +149,11 @@ VeroniQA is a chat interface over AgentQA, for people who would rather ask than 
 - **Knowledge base.** Upload Markdown, text, HTML or PDF files, or add a link. Each source is turned
   into text, split into passages, scanned for prompt injection (suspicious passages are quarantined
   and never retrieved) and indexed in the project's own Chroma collection.
+- **API documentation links.** Link an OpenAPI or Swagger file (JSON or YAML), or a Swagger UI or
+  ReDoc page such as <https://petstore3.swagger.io>. Those pages are JavaScript apps with no text
+  of their own, so VeroniQA follows them to the spec they load and indexes one readable section
+  per endpoint (parameters, request body, responses, authentication) plus the data models. The
+  spec also becomes the project's spec if it has none yet.
 - **Retrieval-augmented answers.** Questions are answered from the passages found by hybrid
   (vector + keyword) search. The answer cites passages by number, and any citation that does not
   point at a retrieved passage is dropped and flagged. If the knowledge does not cover the question,
@@ -352,7 +357,8 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 │                        list_runs, perf_ab, plus report resources
 ├── api/                 FastAPI web UI (runs, findings, timeline, delegation ledger, scoreboard)
 ├── veroniqa/            the VeroniQA agent: projects.py, knowledge.py (uploads, chunking, injection
-│                        scan, per-project vector store), fetch.py (SSRF-safe links), rag.py (cited
+│                        scan, per-project vector store), fetch.py (SSRF-safe links), apidocs.py (OpenAPI and
+│                        Swagger UI links to readable endpoint docs), rag.py (cited
 │                        answers), agent.py (routing to actions), runs.py, app.py (Streamlit UI),
 │                        hosted.py, server.py, site.py (public demo: home page, SEO files, /talk/)
 └── sim/                 the rule libraries behind the simulated models

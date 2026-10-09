@@ -206,6 +206,8 @@ with knowledge_tab:
                 try:
                     src = v.kb.add_link(url.strip(), v.fetcher)
                     st.success(f"Added {src.name} ({src.chunks} passages)")
+                    if v.kb.project.config.spec == src.url:
+                        st.info("This link is an API specification; it is now the project's spec.")
                 except (FetchError, ValueError) as exc:
                     st.error(f"Could not add the link: {exc}")
         st.subheader("Try retrieval")
