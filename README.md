@@ -270,6 +270,35 @@ This is a proof of concept; these are the steps from here to something a client 
 5. Run perf in containers with real CPU limits and longer soaks; add trace-based (span count) N+1 detection from Phoenix rather than target counters.
 6. An independent red-team set for prompt injection and a human-labelled judge calibration set.
 
+## Built with
+
+**Languages and formats**
+
+| | used for |
+|---|---|
+| **Python 3.12** | everything: the agents, the target API, evals, the VeroniQA app, scripts and the video tooling |
+| YAML | configuration (models, providers, pricing, guardrails, dispatch, target configs), CI workflows, compose |
+| Markdown | versioned prompt templates (`prompts/`), requirement documents, docs and reports |
+| HTML + Jinja2 | the run reports and the web UI templates; the `/watch` page |
+| SQL (SQLite) | the run store and cross-run memory |
+| JSON / JSONL | OpenAPI specs, results, recorded model responses for the replay gate |
+| Dockerfile, Makefile | container images and the developer commands |
+
+**Tools and libraries**
+
+| area | tools |
+|---|---|
+| Packaging and quality | [uv](https://docs.astral.sh/uv/) (locked installs), **pytest** (unit, end-to-end and app tests), pytest-cov, **ruff** (lint, format, security rules), **mypy**, pre-commit, pip-audit, Dependabot |
+| Web and APIs | **FastAPI**, Uvicorn, Starlette, Pydantic, HTTPX, Typer (the `agentqa` CLI) |
+| Models | Anthropic, OpenAI and Google Gen AI SDKs (Claude, Gemini, OpenRouter), plus deterministic simulated models for keyless runs |
+| Retrieval (RAG) | **Chroma** (embedded vector database), BM25 lexical search, feature-hashing or fastembed embeddings, pypdf |
+| Agent integration | **MCP** (Model Context Protocol) server for Claude Code, Cursor and other clients |
+| Interfaces | **Streamlit** (VeroniQA), Jinja2 (reports and the web UI) |
+| Observability | **OpenTelemetry** (traces and metrics, GenAI and OpenInference attributes), structlog, Arize Phoenix, Prometheus, Grafana, cAdvisor |
+| Performance | **Locust**, psutil, matplotlib (charts) |
+| Video and audio | Pillow, NumPy, ffmpeg, Kokoro-82M (kokoro-onnx) for the voice, sherpa-onnx Whisper for the voice check, Playwright and Chromium for screenshots |
+| CI/CD and hosting | GitHub Actions, GitGuardian, Docker Compose, Vercel (container image for the VeroniQA demo) |
+
 ## Repository map
 
 A request flows through the packages roughly in this order: `ingest` → `orchestrator` (with
