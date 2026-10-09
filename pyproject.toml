@@ -48,7 +48,7 @@ agentqa = "agentqa.cli:app"
 agentqa-mcp = "agentqa.mcp.server:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.32,<2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

@@ -57,3 +57,18 @@ def test_new_project_form_creates_a_project() -> None:
     next(b for b in at.button if b.label == "Create project").click().run()
     assert not at.exception, at.exception
     assert at.header[0].value == "Billing API"
+
+
+def test_new_project_can_be_created_when_projects_already_exist() -> None:
+    # Regression: selecting the new project used to raise StreamlitWidgetAlreadyInstantiatedError
+    # whenever the project selectbox was already on the page.
+    at = _app()
+    _click(at, "Create the Orders API demo project")
+    assert at.header[0].value == "Orders API demo"
+    next(t for t in at.text_input if t.label == "Name").set_value("Billing API")
+    next(b for b in at.button if b.label == "Create project").click().run()
+    assert not at.exception, at.exception
+    assert at.header[0].value == "Billing API"
+    _click(at, "Create the Orders API demo project")  # a second demo project, also selected
+    assert at.header[0].value == "Orders API demo"
+    assert len(next(s for s in at.selectbox if s.label == "Project").options) == 3

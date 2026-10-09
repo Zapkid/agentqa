@@ -38,7 +38,7 @@ AUDIT_IGNORES := --ignore-vuln PYSEC-2026-311 --ignore-vuln PYSEC-2026-3813 \
 audit:
 	@mkdir -p .cache
 	@$(UV) export --frozen --no-hashes --no-emit-project -q -o .cache/requirements.txt
-	uvx pip-audit -r .cache/requirements.txt --no-deps --disable-pip $(AUDIT_IGNORES)
+	uvx pip-audit==2.10.1 -r .cache/requirements.txt --no-deps --disable-pip $(AUDIT_IGNORES)
 
 # Run the target API locally (no Docker). BUGS=B01,B04 PERF_BUGS=P01 make target
 target:
@@ -48,8 +48,8 @@ target:
 veroniqa:
 	$(UV) run agentqa veroniqa
 
-# The public-demo build (docs/DEPLOY.md): private workspaces, simulated models, and the watch
-# page with the introduction video, on http://127.0.0.1:8502.
+# The public-demo build (docs/DEPLOY.md): the introduction video as the home page and the app at
+# /talk/ (private workspaces, simulated models), on http://127.0.0.1:8502.
 veroniqa-hosted:
 	VERONIQA_HOSTED=1 AGENTQA_HOME=.agentqa/hosted $(UV) run uvicorn agentqa.veroniqa.server:app --host 127.0.0.1 --port 8502
 
@@ -61,10 +61,10 @@ videos:
 
 # Narrated 1080p introduction to VeroniQA (voice: Kokoro-82M, run locally; music: generated).
 # The second command checks the soundtrack with an independent speech recogniser.
-TTS_DEPS := --with kokoro-onnx==0.6.1 --with soundfile
+TTS_DEPS := --with kokoro-onnx==0.6.1 --with soundfile==0.14.0
 video-intro:
 	$(UV) run $(TTS_DEPS) python scripts/videos/veroniqa_intro.py
-	$(UV) run $(TTS_DEPS) --with sherpa-onnx python scripts/videos/check_voice.py
+	$(UV) run $(TTS_DEPS) --with sherpa-onnx==1.13.8 python scripts/videos/check_voice.py
 
 # Second, differently shaped target: Swagger 2.0 contract, X-API-Key auth. BUGS=T01,T02 make example-tasks
 example-tasks:
