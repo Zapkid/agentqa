@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa videos clean
 
 install:
 	$(UV) sync
@@ -47,6 +47,12 @@ target:
 # Veroniqa: chat, knowledge base and test runs in the browser (http://127.0.0.1:8501).
 veroniqa:
 	$(UV) run agentqa veroniqa
+
+# Promo videos (media/videos/*.mp4), rendered from results/*.json and media/veroniqa/.
+# Refresh the Veroniqa screenshots first with:
+#   uv run --with playwright==1.55.0 python scripts/videos/capture_veroniqa.py
+videos:
+	$(PY) scripts/videos/render.py
 
 # Second, differently shaped target: Swagger 2.0 contract, X-API-Key auth. BUGS=T01,T02 make example-tasks
 example-tasks:

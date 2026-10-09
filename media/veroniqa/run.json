@@ -1,0 +1,43 @@
+{
+ "run_id": "run-20261009-094747-b332d2",
+ "seeded_bugs": [
+  "B01",
+  "B04"
+ ],
+ "outcomes": {
+  "passed": 46,
+  "failed": 2
+ },
+ "product_bugs": [
+  "A customer cannot read another customer's order",
+  "Reject item quantities outside 1..1000"
+ ],
+ "tokens": 52098,
+ "simulated": true,
+ "sources": [
+  {
+   "name": "01-overview.md",
+   "quarantined": 0
+  },
+  {
+   "name": "02-orders.md",
+   "quarantined": 0
+  },
+  {
+   "name": "03-customers-products.md",
+   "quarantined": 0
+  },
+  {
+   "name": "04-payments.md",
+   "quarantined": 0
+  },
+  {
+   "name": "05-performance.md",
+   "quarantined": 0
+  },
+  {
+   "name": "poisoned.md",
+   "quarantined": 1
+  }
+ ]
+}
