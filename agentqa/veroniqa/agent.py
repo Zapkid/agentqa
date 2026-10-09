@@ -140,8 +140,16 @@ class VeroniQA:
             if src.quarantined
             else ""
         )
+        spec_note = (
+            " It is an API specification, so it is now this project's spec."
+            if self.project.config.spec == src.url
+            else ""
+        )
         return Reply(
-            text=f"Added **{src.name}** to the knowledge base ({src.chunks} passages{extra}).",
+            text=(
+                f"Added **{src.name}** to the knowledge base ({src.chunks} passages{extra})."
+                + spec_note
+            ),
             action="add_link",
         )
 
