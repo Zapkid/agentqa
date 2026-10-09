@@ -68,7 +68,12 @@ the audit.
   resolved again by the HTTP client, so a hostname whose answer changes in between is not covered.
   Pinning the connection to the checked address would close it.
 - **No authentication on the web UI, VeroniQA or the MCP HTTP transport.** They are loopback-only by default;
-  do not expose them. See `docs/ENTERPRISE.md` for SSO/RBAC and audit storage.
+  do not expose them. See `docs/ENTERPRISE.md` for SSO/RBAC and audit storage. The one exception
+  is VeroniQA's public demo (`VERONIQA_HOSTED=1`, docs/DEPLOY.md), which is built for exposure:
+  each visitor gets a private, temporary workspace behind an unguessable id in the URL; models are
+  simulated, so there are no keys to steal or spend; test runs only reach the bundled API, two at
+  a time; external-API settings are locked. Anyone holding a workspace link can open that
+  workspace, and there is no rate limit beyond the run cap.
 - **The compose stack has never been run** (no Docker in the build environment), so the hardening
   there is validated as YAML only.
 - **The secret scanner is a regex scanner**, not a substitute for a managed one (GitGuardian also

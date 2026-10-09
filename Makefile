@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa videos video-intro clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa veroniqa-hosted videos video-intro clean
 
 install:
 	$(UV) sync
@@ -47,6 +47,11 @@ target:
 # VeroniQA: chat, knowledge base and test runs in the browser (http://127.0.0.1:8501).
 veroniqa:
 	$(UV) run agentqa veroniqa
+
+# The public-demo build (docs/DEPLOY.md): private workspaces, simulated models, the watch page
+# and the videos, on http://127.0.0.1:8502.
+veroniqa-hosted:
+	VERONIQA_HOSTED=1 AGENTQA_HOME=.agentqa/hosted $(UV) run uvicorn agentqa.veroniqa.server:app --host 127.0.0.1 --port 8502
 
 # Promo videos (media/videos/*.mp4), rendered from results/*.json and media/veroniqa/.
 # Refresh the VeroniQA screenshots first with:
