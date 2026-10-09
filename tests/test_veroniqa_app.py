@@ -1,4 +1,4 @@
-"""Veroniqa's Streamlit interface, driven headlessly with Streamlit's AppTest."""
+"""VeroniQA's Streamlit interface, driven headlessly with Streamlit's AppTest."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _click(at: AppTest, label: str) -> None:
 
 def test_welcome_screen_without_projects() -> None:
     at = _app()
-    assert at.header[0].value == "Welcome to Veroniqa"
+    assert at.header[0].value == "Welcome to VeroniQA"
 
 
 def test_demo_project_chat_knowledge_and_runs_tab() -> None:

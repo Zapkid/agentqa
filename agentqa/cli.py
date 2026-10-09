@@ -224,7 +224,7 @@ def killswitch(
 
 @app.command()
 def veroniqa(port: int = 8501) -> None:
-    """Open Veroniqa, the chat interface over AgentQA (Streamlit, bound to 127.0.0.1)."""
+    """Open VeroniQA, the chat interface over AgentQA (Streamlit, bound to 127.0.0.1)."""
     import subprocess
 
     app_path = REPO_ROOT / "agentqa/veroniqa/app.py"

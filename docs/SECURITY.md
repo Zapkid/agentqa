@@ -21,9 +21,9 @@ page, this page wins.
 | load | allowlisted sandbox targets only; caps on users, duration, request rate and seeded data; automatic abort on target errors or host pressure | `perf/runner.py`, `perf/locustfile.py` |
 | reports | HTML is escaped; Markdown files have raw HTML neutralised outside code; only http(s), anchor and relative links are rendered as links | `agents/reporter.py` |
 | SQL | values are always bound; the few interpolated identifiers come from fixed lists or an allowlist (`Store.RUN_FIELDS`) | `store.py` |
-| Veroniqa knowledge | uploads: 5 MB, type allowlist, file names reduced to a safe basename; links: http(s) only, no credentials, public addresses only (checked again after every redirect), 2 MB, text types only; every source goes through the injection scan; project ids are validated against path traversal | `veroniqa/knowledge.py`, `veroniqa/fetch.py`, `veroniqa/projects.py` |
-| Veroniqa answers | the model sees passages as delimited, untrusted data; citations to passages that were not retrieved are dropped and flagged | `veroniqa/rag.py` |
-| network exposure | the web UI, Veroniqa (Streamlit) and the MCP HTTP server bind to `127.0.0.1` by default; every compose port is published on `127.0.0.1` only | `cli.py`, `mcp/server.py`, `.streamlit/config.toml`, `deploy/docker-compose.yml` |
+| VeroniQA knowledge | uploads: 5 MB, type allowlist, file names reduced to a safe basename; links: http(s) only, no credentials, public addresses only (checked again after every redirect), 2 MB, text types only; every source goes through the injection scan; project ids are validated against path traversal | `veroniqa/knowledge.py`, `veroniqa/fetch.py`, `veroniqa/projects.py` |
+| VeroniQA answers | the model sees passages as delimited, untrusted data; citations to passages that were not retrieved are dropped and flagged | `veroniqa/rag.py` |
+| network exposure | the web UI, VeroniQA (Streamlit) and the MCP HTTP server bind to `127.0.0.1` by default; every compose port is published on `127.0.0.1` only | `cli.py`, `mcp/server.py`, `.streamlit/config.toml`, `deploy/docker-compose.yml` |
 | supply chain | every dependency has a floor and an upper bound; `uv.lock` pins the rest; CI installs with `--locked`; Dependabot proposes bumps; weekly `make audit` | `pyproject.toml`, `.github/` |
 | lint | ruff security rules (`S`) run in CI; each intentional exception carries a reason in a `noqa` comment | `pyproject.toml` |
 
@@ -64,10 +64,10 @@ the audit.
   local demo; remove or replace it elsewhere.
 - **Local defaults are placeholders**: `TARGET_WEBHOOK_SECRET` and the Grafana admin password both
   default to `change-me-local-only`. Set real values in `.env` for anything shared.
-- **DNS rebinding in Veroniqa's link fetcher.** Addresses are checked before the request and
+- **DNS rebinding in VeroniQA's link fetcher.** Addresses are checked before the request and
   resolved again by the HTTP client, so a hostname whose answer changes in between is not covered.
   Pinning the connection to the checked address would close it.
-- **No authentication on the web UI, Veroniqa or the MCP HTTP transport.** They are loopback-only by default;
+- **No authentication on the web UI, VeroniQA or the MCP HTTP transport.** They are loopback-only by default;
   do not expose them. See `docs/ENTERPRISE.md` for SSO/RBAC and audit storage.
 - **The compose stack has never been run** (no Docker in the build environment), so the hardening
   there is validated as YAML only.

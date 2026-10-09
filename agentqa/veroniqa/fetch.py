@@ -127,7 +127,7 @@ def fetch_url(
     url: str, *, client: httpx.Client | None = None, resolver: Resolver = _resolve
 ) -> FetchedPage:
     own = client is None
-    http = client or httpx.Client(timeout=TIMEOUT_S, headers={"User-Agent": "AgentQA-Veroniqa"})
+    http = client or httpx.Client(timeout=TIMEOUT_S, headers={"User-Agent": "AgentQA-VeroniQA"})
     try:
         current = url
         for _ in range(MAX_REDIRECTS + 1):

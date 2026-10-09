@@ -1,4 +1,4 @@
-"""Veroniqa's web interface (Streamlit).
+"""VeroniQA's web interface (Streamlit).
 
 Run it with `make veroniqa` or `uv run agentqa veroniqa`: it binds to 127.0.0.1. Everything the UI
 does goes through agentqa.veroniqa, so the chat, the buttons and the tests share one code path.
@@ -15,7 +15,7 @@ from typing import Any
 
 import streamlit as st
 
-from agentqa.veroniqa import Reply, Veroniqa, create_demo_project, create_project, list_projects
+from agentqa.veroniqa import Reply, VeroniQA, create_demo_project, create_project, list_projects
 from agentqa.veroniqa.fetch import FetchError
 from agentqa.veroniqa.knowledge import UPLOAD_TYPES
 from agentqa.veroniqa.projects import Project, load_project
@@ -24,13 +24,13 @@ from agentqa.veroniqa.runs import NotRunnable, project_runs
 PROFILES = ["simulated", "free", "mixed", "premium"]
 BUG_IDS = [f"B{i:02d}" for i in range(1, 13)]
 
-st.set_page_config(page_title="Veroniqa · AgentQA", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="VeroniQA · AgentQA", page_icon="🧪", layout="wide")
 
 
 @st.cache_resource(show_spinner=False)
-def agent(project_root: str, profile: str) -> Veroniqa:
+def agent(project_root: str, profile: str) -> VeroniQA:
     """One agent (and vector-store client) per project folder and profile."""
-    return Veroniqa(Project(Path(project_root)), profile=profile)
+    return VeroniQA(Project(Path(project_root)), profile=profile)
 
 
 def show_reply(reply: Reply) -> None:
@@ -56,7 +56,7 @@ def show_reply(reply: Reply) -> None:
 # ---------------------------------------------------------------- sidebar: projects and settings
 
 with st.sidebar:
-    st.title("Veroniqa")
+    st.title("VeroniQA")
     st.caption("Your AgentQA assistant: projects, knowledge, tests.")
     profile = st.selectbox(
         "Model profile",
@@ -94,7 +94,7 @@ with st.sidebar:
 
 slug: str | None = st.session_state.get("project")
 if not slug:
-    st.header("Welcome to Veroniqa")
+    st.header("Welcome to VeroniQA")
     st.write(
         "Create a project in the sidebar, or start with the demo project: the bundled Orders "
         "API, its requirement documents and 12 seeded bugs."

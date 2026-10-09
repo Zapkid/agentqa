@@ -1,4 +1,4 @@
-"""Veroniqa: routes a chat message to one action and carries it out with the repo's features."""
+"""VeroniQA: routes a chat message to one action and carries it out with the repo's features."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ RUN_ID_RE = re.compile(r"\brun-\d{8}-\d{6}-[0-9a-f]{6}\b")
 
 Action = Literal["ask", "add_link", "run_tests", "list_runs", "show_report", "list_sources", "help"]
 
-HELP = """I'm **Veroniqa**. In this project I can:
+HELP = """I'm **VeroniQA**. In this project I can:
 
 - **answer questions** from the documents and links in its knowledge base, citing the passages I used;
 - **add a link**: send me a web page URL and I'll read it into the knowledge base;
@@ -52,7 +52,7 @@ class Reply(BaseModel):
     note: str = ""
 
 
-class Veroniqa:
+class VeroniQA:
     def __init__(
         self,
         project: Project,

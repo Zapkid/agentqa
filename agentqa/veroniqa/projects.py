@@ -1,4 +1,4 @@
-"""Veroniqa projects: one folder per project.
+"""VeroniQA projects: one folder per project.
 
 <AGENTQA_HOME>/projects/<slug>/
     project.yaml     name, description, spec, target settings

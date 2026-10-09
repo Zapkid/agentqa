@@ -63,7 +63,7 @@ Honest list, kept current. If something in the README sounds stronger than this 
   scored as product bugs.
 
 ## 4. Not implemented (or only partly)
-- Veroniqa (ADR 0010): single-user and local (no authentication); chat history lives in the
+- VeroniQA (ADR 0010): single-user and local (no authentication); chat history lives in the
   browser session; with the simulated profile, answers are extracts from the documents rather than
   a model's prose, and routing is keyword-based. It has not been run against a real model here.
 - Input formats and auth (ADR 0009): Swagger 2.0 is converted, not parsed natively; auth is a

@@ -1,4 +1,4 @@
-"""Test runs started from a Veroniqa project, using AgentQA's own pipeline."""
+"""Test runs started from a VeroniQA project, using AgentQA's own pipeline."""
 
 from __future__ import annotations
 

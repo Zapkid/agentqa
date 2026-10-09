@@ -1,4 +1,4 @@
-"""Simulated responders for Veroniqa's prompts: keyword routing and extractive answers.
+"""Simulated responders for VeroniQA's prompts: keyword routing and extractive answers.
 
 Deterministic on purpose: a chat interface that randomly misroutes would only make the demo and
 the tests flaky. Real models replace both with `AGENTQA_PROFILE=free|mixed|premium`.

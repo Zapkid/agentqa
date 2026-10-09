@@ -1,4 +1,4 @@
-"""Veroniqa: projects, knowledge base, safe link fetching, RAG with citations, and routing."""
+"""VeroniQA: projects, knowledge base, safe link fetching, RAG with citations, and routing."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 import pytest
 
-from agentqa.veroniqa import Veroniqa, create_demo_project, create_project, list_projects
+from agentqa.veroniqa import VeroniQA, create_demo_project, create_project, list_projects
 from agentqa.veroniqa.fetch import FetchedPage, FetchError, check_url, fetch_url, html_to_text
 from agentqa.veroniqa.knowledge import KnowledgeBase, extract_text
 from agentqa.veroniqa.projects import delete_project, load_project, slugify
@@ -229,14 +229,14 @@ def test_demo_project_quarantines_the_poisoned_doc(demo: Any) -> None:
     ],
 )
 def test_routing(demo: Any, message: str, action: str, extra: str | None) -> None:
-    route = Veroniqa(demo).route(message)
+    route = VeroniQA(demo).route(message)
     assert route.action == action
     if extra:
         assert route.bugs == extra
 
 
 def test_chat_answers_with_citations_and_refuses_unknowns(demo: Any) -> None:
-    v = Veroniqa(demo)
+    v = VeroniQA(demo)
     r = v.chat("What is the p95 latency target for the order list?")
     assert r.action == "ask" and "300 ms" in r.text and r.citations
     assert all(c.source != "poisoned.md" for c in r.citations)
@@ -247,10 +247,10 @@ def test_chat_add_link_uses_safe_fetcher(demo: Any) -> None:
     def fetcher(url: str) -> FetchedPage:
         return FetchedPage(url=url, title="Shipping guide", text="Orders ship within 2 days.")
 
-    v = Veroniqa(demo, fetcher=fetcher)
+    v = VeroniQA(demo, fetcher=fetcher)
     r = v.chat("add https://docs.example.com/shipping to the knowledge")
     assert "Shipping guide" in r.text and any(s.kind == "link" for s in demo.sources())
-    blocked = Veroniqa(demo).chat("add http://127.0.0.1:8000/admin to the knowledge")
+    blocked = VeroniQA(demo).chat("add http://127.0.0.1:8000/admin to the knowledge")
     assert "non-public" in blocked.text
 
 
@@ -269,7 +269,7 @@ def test_run_tests_reports_the_run(demo: Any) -> None:
         calls.append((profile, bugs))
         return SimpleNamespace(report=report, paths={"report_html": "r.html"})
 
-    r = Veroniqa(demo, runner=runner).chat("run the tests with B03")
+    r = VeroniQA(demo, runner=runner).chat("run the tests with B03")
     assert calls == [("simulated", "B03")] and r.run_id and "Simulated models" in r.text
 
 
@@ -280,7 +280,7 @@ def test_demo_build_selection() -> None:
 
 @pytest.mark.slow
 def test_chat_runs_the_real_pipeline_on_the_demo(demo: Any) -> None:
-    v = Veroniqa(demo)
+    v = VeroniQA(demo)
     r = v.chat("run the tests with B01 and B04")
     assert r.action == "run_tests" and r.run_id and r.report_html and Path(r.report_html).exists()
     runs = v.chat("show previous runs")

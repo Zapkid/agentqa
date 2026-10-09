@@ -44,17 +44,17 @@ audit:
 target:
 	$(UV) run uvicorn target_api.app.main:app --port 8000
 
-# Veroniqa: chat, knowledge base and test runs in the browser (http://127.0.0.1:8501).
+# VeroniQA: chat, knowledge base and test runs in the browser (http://127.0.0.1:8501).
 veroniqa:
 	$(UV) run agentqa veroniqa
 
 # Promo videos (media/videos/*.mp4), rendered from results/*.json and media/veroniqa/.
-# Refresh the Veroniqa screenshots first with:
+# Refresh the VeroniQA screenshots first with:
 #   uv run --with playwright==1.55.0 python scripts/videos/capture_veroniqa.py
 videos:
 	$(PY) scripts/videos/render.py
 
-# Narrated 1080p introduction to Veroniqa (voice: Kokoro-82M, run locally; music: generated).
+# Narrated 1080p introduction to VeroniQA (voice: Kokoro-82M, run locally; music: generated).
 # The second command checks the soundtrack with an independent speech recogniser.
 TTS_DEPS := --with kokoro-onnx==0.6.1 --with soundfile
 video-intro:

@@ -1,4 +1,4 @@
-"""Veroniqa's narrated introduction (1080p, voice-over, music, captions).
+"""VeroniQA's narrated introduction (1080p, voice-over, music, captions).
 
     uv run --with kokoro-onnx==0.6.1 --with soundfile python scripts/videos/veroniqa_intro.py
 
@@ -43,7 +43,7 @@ OUT = REPO_ROOT / "media/videos/veroniqa-intro.mp4"
 MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
 VOICE, SPEED = "af_heart", 0.96
 # How the voice should say things (captions keep the real spelling).
-SAY = [(r"\bVeroniqa\b", "Veronica"), (r"\bveroniqa\b", "Veronica"), (r"\bAgentQA\b", "Agent QA"),
+SAY = [(r"\bVeroniQA\b", "Veronica"), (r"\bveroniqa\b", "Veronica"), (r"\bAgentQA\b", "Agent QA"),
        (r"(\d+)%", r"\1 percent"), (r"cloud-metadata", "cloud metadata")]  # fmt: skip
 
 NAVY, NAVY2 = (9, 13, 28), (17, 24, 49)
@@ -116,7 +116,7 @@ def narration() -> tuple[list[Scene], dict[str, Any]]:
     data = {"recall": recall, "ratio": ratio, "n": s3["n"], "found": found, "seeded": seeded,
             "passed": facts["outcomes"].get("passed", 0), "facts": facts}  # fmt: skip
     scenes = [
-        Scene("intro", ["Meet Veroniqa, your AI assistant for API testing.",
+        Scene("intro", ["Meet VeroniQA, your AI assistant for API testing.",
                         "She turns your requirements into tests that run, and results you can trust."],
               lead=1.8),
         Scene("knowledge", ["Start a project, and give her what your team already has: requirement "
@@ -124,13 +124,13 @@ def narration() -> tuple[list[Scene], dict[str, Any]]:
                             "Every source is indexed, and scanned for prompt injection before she "
                             "ever reads it."]),
         Scene("ask", ["Ask a question in plain English.",
-                      "Veroniqa answers from your own documents, and shows the passages she used.",
+                      "VeroniQA answers from your own documents, and shows the passages she used.",
                       "If the answer isn't there, she tells you, instead of guessing."]),
         Scene("links", ["Links are fetched safely.",
                         "Internal and cloud-metadata addresses are refused, so your knowledge base "
                         "can't be turned against your network."]),
         Scene("run", ["When you're ready, just say: run the tests.",
-                      "Veroniqa plans, writes and runs API tests against your service, then "
+                      "VeroniQA plans, writes and runs API tests against your service, then "
                       "triages every failure, with evidence.",
                       f"In this demo, she found {which} planted bugs, with {data['passed']} tests "
                       "passing."]),
@@ -139,7 +139,7 @@ def narration() -> tuple[list[Scene], dict[str, Any]]:
                         "result.",
                         f"On our simulated benchmark, it found {recall}% of the planted bugs, at "
                         f"{ratio}% of the cost."]),
-        Scene("outro", ["Veroniqa. Ask, add knowledge, and run the tests."], tail=4.2),
+        Scene("outro", ["VeroniQA. Ask, add knowledge, and run the tests."], tail=4.2),
     ]  # fmt: skip
     return scenes, data
 
@@ -266,7 +266,7 @@ def wrap(s: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
 
 
 def logo(size: int) -> Image.Image:
-    """Veroniqa's mark: a gradient speech bubble with a check-mark 'V'."""
+    """VeroniQA's mark: a gradient speech bubble with a check-mark 'V'."""
     s = size * 2  # supersample
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     grad = np.zeros((s, s, 4), dtype="uint8")
@@ -335,7 +335,7 @@ def browser(img: Image.Image, shot: str, box: tuple[int, int, int, int], p: floa
     ld.rounded_rectangle(
         (x0 + 120, y0r + 10, x1 - 120, y0r + 37), radius=13, fill=(255, 255, 255, 255)
     )
-    text(ld, ((x0 + x1) / 2, y0r + 24), "127.0.0.1:8501  ·  Veroniqa", F(17, "Medium"),
+    text(ld, ((x0 + x1) / 2, y0r + 24), "127.0.0.1:8501  ·  VeroniQA", F(17, "Medium"),
          (120, 126, 140), anchor="mm")  # fmt: skip
     # zoom toward the highlight
     hx, hy = (0.5, 0.45)
@@ -429,7 +429,7 @@ def draw_intro(img: Image.Image, t: float, data: dict[str, Any]) -> None:
     paste_logo(img, (W / 2, cy), int(180 * (0.6 + 0.4 * pop)), pop)
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    name = "Veroniqa"
+    name = "VeroniQA"
     f = F(128, "Bold")
     x = W / 2 - f.getlength(name) / 2
     for i, ch in enumerate(name):
@@ -474,7 +474,7 @@ def draw_outro(img: Image.Image, t: float, data: dict[str, Any]) -> None:
     d = ImageDraw.Draw(layer)
     pop = ease(min(1, t / 0.8))
     paste_logo(img, (W / 2, 300), int(150 * (0.7 + 0.3 * pop)), pop)
-    text(d, (W / 2, 470), "Veroniqa", F(110, "Bold"), INK, window(t, 0.3, 0.6), anchor="mm")
+    text(d, (W / 2, 470), "VeroniQA", F(110, "Bold"), INK, window(t, 0.3, 0.6), anchor="mm")
     text(d, (W / 2, 565), "Ask.  Add knowledge.  Run the tests.", F(40, "Medium"), ORANGE,
          window(t, 0.7, 0.6), anchor="mm")  # fmt: skip
     k = window(t, 1.3, 0.6)
@@ -611,7 +611,7 @@ def main() -> None:
          "-i", str(CACHE / "audio.m4a"), "-i", str(subs), "-map", "0:v", "-map", "1:a",
          "-map", "2:s", "-c:v", "copy", "-c:a", "copy", "-c:s", "mov_text",
          "-metadata:s:s:0", "language=eng", "-metadata:s:a:0", "language=eng",
-         "-metadata", "title=Meet Veroniqa", "-movflags", "+faststart", str(OUT)],
+         "-metadata", "title=Meet VeroniQA", "-movflags", "+faststart", str(OUT)],
         check=True,
     )  # fmt: skip
     print(f"wrote {OUT.relative_to(REPO_ROOT)} ({OUT.stat().st_size / 1e6:.1f} MB)")

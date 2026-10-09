@@ -1,4 +1,4 @@
-# ADR 0010: Veroniqa, a chat interface with project knowledge and RAG
+# ADR 0010: VeroniQA, a chat interface with project knowledge and RAG
 
 Status: accepted (2026-10-09)
 

@@ -1,4 +1,4 @@
-"""Capture real Veroniqa screenshots and run facts for promo video 03.
+"""Capture real VeroniQA screenshots and run facts for promo video 03.
 
 Uses a throwaway AGENTQA_HOME, the simulated models and the real pipeline, then drives the real
 Streamlit app in Chromium. Needs Playwright (not a project dependency):
@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT))
 import httpx  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-from agentqa.veroniqa import Veroniqa, create_demo_project  # noqa: E402
+from agentqa.veroniqa import VeroniQA, create_demo_project  # noqa: E402
 
 BUGS = ["B01", "B04"]
 QUESTION = "What is the p95 latency target for the order list?"
@@ -48,7 +48,7 @@ def free_port() -> int:
 
 def run_facts() -> None:
     project = create_demo_project()
-    reply = Veroniqa(project).chat(f"run the tests with {' and '.join(BUGS)}")
+    reply = VeroniQA(project).chat(f"run the tests with {' and '.join(BUGS)}")
     report = json.loads((project.runs_dir / str(reply.run_id) / "report.json").read_text())
     outcomes: dict[str, int] = {}
     for r in report["results"]:

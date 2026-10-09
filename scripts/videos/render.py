@@ -4,7 +4,7 @@
     uv run python scripts/videos/render.py 2          # just one
 
 Every number on screen comes from results/*.json (via agentqa.evals.report.latest_results) or
-from media/veroniqa/run.json (a real Veroniqa run, see capture_veroniqa.py). Benchmark numbers are
+from media/veroniqa/run.json (a real VeroniQA run, see capture_veroniqa.py). Benchmark numbers are
 from simulated models, and each video says so on screen.
 """
 
@@ -205,7 +205,7 @@ def video_trust(func: dict[str, Any], perf: dict[str, Any]) -> list[tuple[float,
     ]  # fmt: skip
 
 
-# ---------------------------------------------------------------- video 3: meet Veroniqa
+# ---------------------------------------------------------------- video 3: meet VeroniQA
 
 
 def screen(
@@ -239,7 +239,7 @@ def video_veroniqa() -> list[tuple[float, Draw]]:
     seeded = len(facts["seeded_bugs"])
     note = "Real screenshots of the app, running the simulated models on the bundled demo API."
     return [
-        (4.0, title("Introducing", "Meet Veroniqa.", "Your API-testing assistant.",
+        (4.0, title("Introducing", "Meet VeroniQA.", "Your API-testing assistant.",
                     "Projects, a knowledge base with retrieval, and AgentQA's test runs, "
                     "in one chat.")),
         (5.5, screen("1 · Knowledge", "Drop in your requirements. Every document is chunked, "

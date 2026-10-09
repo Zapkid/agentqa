@@ -22,7 +22,7 @@ those objections:
 | "Can we see what it is doing?" | **Observability.** Every agent step, model call, token count and cost is traced (OpenTelemetry), with Phoenix, Prometheus and Grafana wired up to receive it. |
 | "Will it survive real workloads?" | **Orchestration.** A supervisor runs specialised agents (planner, generator, triage, reporter) as a task graph with checkpoints, failure isolation and resumable runs. |
 | "Is it only functional testing?" | **Performance too.** Load tests compare a clean build with a changed one, so only a change beyond measured noise counts as a regression, and the likely cause is named. |
-| "Does it fit how our developers work?" | **Plug-in access.** Chat with **Veroniqa** in the browser, let coding agents such as Claude Code or Cursor call it over MCP, and gate every pull request on an eval and a performance smoke test in CI. |
+| "Does it fit how our developers work?" | **Plug-in access.** Chat with **VeroniQA** in the browser, let coding agents such as Claude Code or Cursor call it over MCP, and gate every pull request on an eval and a performance smoke test in CI. |
 
 ## What you can show in five minutes
 `make demo` runs the whole story against the bundled Orders API, which has 12 functional bugs and
@@ -36,10 +36,10 @@ are labelled on screen):
 
 | video | shows |
 |---|---|
-| [**Meet Veroniqa** (85 s, with sound)](media/videos/veroniqa-intro.mp4) | a narrated 1080p introduction: knowledge base, cited answers, safe links, test runs from chat, and the cost result; captions burned in plus a [subtitle file](media/videos/veroniqa-intro.srt) |
+| [**Meet VeroniQA** (85 s, with sound)](media/videos/veroniqa-intro.mp4) | a narrated 1080p introduction: knowledge base, cited answers, safe links, test runs from chat, and the cost result; captions burned in plus a [subtitle file](media/videos/veroniqa-intro.srt) |
 | [Same bugs found, a fraction of the bill](media/videos/01-cost-vs-quality.mp4) | the dispatcher against "strongest model for everything": recall and cost per run |
 | [Trust is a number](media/videos/02-trust-measured.mp4) | performance defects caught, prompt injections quarantined, the saving from memory |
-| [Meet Veroniqa](media/videos/03-meet-veroniqa.mp4) | real screenshots: knowledge base, cited answers, a blocked unsafe link, a test run from chat |
+| [Meet VeroniQA](media/videos/03-meet-veroniqa.mp4) | real screenshots: knowledge base, cited answers, a blocked unsafe link, a test run from chat |
 
 ## Where it stands
 This is a proof of concept. It shows that the approach works end to end on a controlled benchmark,
@@ -131,13 +131,13 @@ With Docker, `make up` starts Phoenix (:6006), Grafana (:3000), Prometheus and t
 | `agentqa perf run --type stress --perf-bugs P02` · `agentqa perf ab --candidate P01` | load test; relative A/B with diagnosis |
 | `agentqa eval --strategies --ablate --seeds 3` · `agentqa eval --perf` · `agentqa eval --gate` | evals and the CI gate |
 | `agentqa killswitch` | stop every run at its next check |
-| `agentqa veroniqa` | Veroniqa, the chat interface (Streamlit on 127.0.0.1:8501) |
+| `agentqa veroniqa` | VeroniQA, the chat interface (Streamlit on 127.0.0.1:8501) |
 | `agentqa-mcp` | MCP server (stdio or `--http`); setup for Claude Code and Cursor in [docs/MCP.md](docs/MCP.md) |
 
-## Veroniqa
-Veroniqa is a chat interface over AgentQA, for people who would rather ask than type commands.
+## VeroniQA
+VeroniQA is a chat interface over AgentQA, for people who would rather ask than type commands.
 
-![Veroniqa answering from the project's documents, with sources](media/veroniqa/chat.png)
+![VeroniQA answering from the project's documents, with sources](media/veroniqa/chat.png)
 
 - **Projects are folders** (`<AGENTQA_HOME>/projects/<name>/`): settings, the knowledge sources, a
   vector store and the project's test runs.
@@ -147,7 +147,7 @@ Veroniqa is a chat interface over AgentQA, for people who would rather ask than 
 - **Retrieval-augmented answers.** Questions are answered from the passages found by hybrid
   (vector + keyword) search. The answer cites passages by number, and any citation that does not
   point at a retrieved passage is dropped and flagged. If the knowledge does not cover the question,
-  Veroniqa says so instead of guessing.
+  VeroniQA says so instead of guessing.
 - **Repo features from chat.** A cheap routing step maps each message to one action: answer, add a
   link, run the tests (the project's documents become the requirement docs for test generation),
   list runs, or show a report. On the demo project you choose which seeded bugs to switch on.
@@ -317,7 +317,7 @@ agentqa/                 the Python package (installed as the `agentqa` and `age
 ├── mcp/server.py        MCP server: ingest_spec, plan_tests, run_suite, triage_run, get_report,
 │                        list_runs, perf_ab, plus report resources
 ├── api/                 FastAPI web UI (runs, findings, timeline, delegation ledger, scoreboard)
-├── veroniqa/            the Veroniqa agent: projects.py, knowledge.py (uploads, chunking, injection
+├── veroniqa/            the VeroniQA agent: projects.py, knowledge.py (uploads, chunking, injection
 │                        scan, per-project vector store), fetch.py (SSRF-safe links), rag.py (cited
 │                        answers), agent.py (routing to actions), runs.py, app.py (Streamlit UI)
 └── sim/                 the rule libraries behind the simulated models
@@ -363,7 +363,7 @@ tests/                   unit and end-to-end tests for every package (fixtures/p
 
 Root files: `pyproject.toml` (dependencies, ruff, mypy, pytest settings), `uv.lock`, `Makefile`,
 `.env.example` (every variable, no values), `.pre-commit-config.yaml` (ruff and secret scan),
-`.streamlit/config.toml` (Veroniqa: loopback only, 5 MB uploads, no telemetry), `RESULTS.md`
+`.streamlit/config.toml` (VeroniQA: loopback only, 5 MB uploads, no telemetry), `RESULTS.md`
 (generated).
 
 Make targets:
@@ -376,9 +376,9 @@ Make targets:
 | `make secrets` | secret scan over tracked files |
 | `make audit` | known-vulnerability scan of the locked dependencies |
 | `make example-tasks` | run the Tasks API example on :8001 (`BUGS=T01,T04 make example-tasks`) |
-| `make veroniqa` | open Veroniqa on http://127.0.0.1:8501 |
+| `make veroniqa` | open VeroniQA on http://127.0.0.1:8501 |
 | `make videos` | render the three short promo videos from the result files |
-| `make video-intro` | render the narrated Veroniqa introduction and check its soundtrack |
+| `make video-intro` | render the narrated VeroniQA introduction and check its soundtrack |
 | `make target` | run the demo API on :8000 (`BUGS=B01 PERF_BUGS=P01 make target`) |
 | `make up` · `make down` | start or stop the Docker observability stack |
 | `make demo` | the 5-minute demo (functional run plus perf A/B) |
