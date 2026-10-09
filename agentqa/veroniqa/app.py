@@ -30,7 +30,6 @@ from agentqa.veroniqa.runs import NotRunnable, project_runs
 
 PROFILES = ["simulated", "free", "mixed", "premium"]
 BUG_IDS = [f"B{i:02d}" for i in range(1, 13)]
-INTRO = Path(__file__).resolve().parents[2] / "media/videos/veroniqa-intro.mp4"
 HOSTED = hosted.hosted()
 
 st.set_page_config(page_title="VeroniQA · AgentQA", page_icon="🧪", layout="wide")
@@ -81,14 +80,6 @@ def workspace() -> Path | None:
     return root
 
 
-def show_intro() -> None:
-    if INTRO.exists():
-        st.subheader("Meet VeroniQA")
-        st.video(str(INTRO))  # captions are burned in
-    if HOSTED:
-        st.caption("The video also has its own page: [/watch](/watch).")
-
-
 root = workspace()
 
 # ---------------------------------------------------------------- sidebar: projects and settings
@@ -103,7 +94,7 @@ with st.sidebar:
             "model. Your workspace is private to this link and temporary, so do not upload "
             "confidential documents."
         )
-        st.link_button("Watch the introduction", "/watch", width="stretch")
+        st.link_button("Watch the introduction", "/", width="stretch")
     else:
         profile = st.selectbox(
             "Model profile",
@@ -146,7 +137,6 @@ if not slug:
         "Create a project in the sidebar, or start with the demo project: the bundled Orders "
         "API, its requirement documents and 12 seeded bugs."
     )
-    show_intro()
     st.stop()
 
 project: Project = load_project(slug, root)
@@ -155,8 +145,8 @@ st.header(project.config.name)
 if project.config.description:
     st.caption(project.config.description)
 
-chat_tab, knowledge_tab, runs_tab, settings_tab, watch_tab = st.tabs(
-    ["Chat", "Knowledge", "Test runs", "Settings", "Watch"]
+chat_tab, knowledge_tab, runs_tab, settings_tab = st.tabs(
+    ["Chat", "Knowledge", "Test runs", "Settings"]
 )
 
 # ---------------------------------------------------------------- chat
@@ -322,8 +312,3 @@ with settings_tab:
             "Without `sandbox: true` in the target config, runs only use read-only methods. "
             "Keys and tokens belong in .env, not in project files."
         )
-
-# ---------------------------------------------------------------- watch
-
-with watch_tab:
-    show_intro()

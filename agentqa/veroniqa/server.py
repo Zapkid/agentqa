@@ -1,8 +1,10 @@
-"""VeroniQA as one ASGI app: the Streamlit UI at /, plus a watch page and the introduction video.
+"""VeroniQA as one ASGI app: a home page with the introduction video, and the Streamlit UI at
+/talk/.
 
     uvicorn agentqa.veroniqa.server:app --host 0.0.0.0 --port 8000
 
-This is how the hosted demo runs (Dockerfile.vercel). Locally, `make veroniqa` is simpler.
+This is how the hosted demo runs (Dockerfile.vercel). Locally, `make veroniqa` is simpler. The
+pages themselves are in site.py.
 """
 
 from __future__ import annotations
@@ -11,13 +13,24 @@ from pathlib import Path
 
 import streamlit as st
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, Response
+from starlette.responses import (
+    FileResponse,
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from starlette.routing import Route
 
-ROOT = Path(__file__).resolve().parents[2]
+from agentqa.veroniqa import site
+
 APP = Path(__file__).with_name("app.py")
-INTRO = ROOT / "media/videos/veroniqa-intro.mp4"  # captions are burned in
+INTRO = site.INTRO  # captions are burned in
 POSTER = INTRO.with_suffix(".jpg")
+TALK = "talk"  # Streamlit's base path: the app, its assets and its WebSocket live under /talk/
+
+# Must be set before st.App builds its routes. Plain `streamlit run` (make veroniqa) is unaffected.
+st.config.set_option("server.baseUrlPath", TALK)
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -25,51 +38,38 @@ SECURITY_HEADERS = {
         "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     ),
     "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "no-referrer",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Cache-Control": "public, max-age=300",
 }
 CACHE = {"Cache-Control": "public, max-age=86400"}
 
-WATCH_PAGE = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meet VeroniQA</title>
-<meta name="description" content="VeroniQA, the AI assistant for API testing built on AgentQA.">
-<style>
-  :root { --bg:#0b1020; --fg:#e8ecf6; --muted:#9aa3b8; --accent:#5b8cff; }
-  @media (prefers-color-scheme: light) {
-    :root { --bg:#f6f7fb; --fg:#141824; --muted:#556; --accent:#2f5fe0; }
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-         font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  main { max-width:1080px; margin:0 auto; padding:32px 16px 64px; }
-  h1 { font-size:clamp(28px,5vw,44px); margin:0 0 8px; letter-spacing:-.02em; }
-  p.lead { color:var(--muted); margin:0 0 24px; max-width:60ch; }
-  video { width:100%; aspect-ratio:16/9; border-radius:12px; background:#000; display:block; }
-  .cta { display:inline-block; margin:24px 0 0; padding:12px 20px; border-radius:10px;
-         background:var(--accent); color:#fff; text-decoration:none; font-weight:600; }
-  footer { color:var(--muted); font-size:14px; margin-top:40px; }
-</style>
-</head>
-<body>
-<main>
-  <h1>Meet VeroniQA</h1>
-  <p class="lead">The AI assistant for API testing, built on AgentQA. Give her your requirements,
-  documents and links; she answers with sources, runs the tests and explains what she found.</p>
-  <video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg" controls
-    preload="metadata" playsinline></video>
-  <a class="cta" href="/">Talk to VeroniQA</a>
-  <footer>A proof of concept. The numbers in the video come from measured runs; the public demo
-  uses simulated models.</footer>
-</main>
-</body>
-</html>"""
+
+async def home(request: Request) -> Response:
+    return HTMLResponse(site.home_page(), headers=SECURITY_HEADERS)
 
 
-async def watch(request: Request) -> Response:
-    return HTMLResponse(WATCH_PAGE, headers=SECURITY_HEADERS)
+async def robots(request: Request) -> Response:
+    return PlainTextResponse(site.robots_txt(), headers=CACHE)
+
+
+async def sitemap(request: Request) -> Response:
+    return Response(site.sitemap_xml(), media_type="application/xml", headers=CACHE)
+
+
+async def llms(request: Request) -> Response:
+    return PlainTextResponse(site.llms_txt(), headers=CACHE)
+
+
+async def favicon(request: Request) -> Response:
+    return Response(site.FAVICON, media_type="image/svg+xml", headers=CACHE)
+
+
+async def to_home(request: Request) -> Response:
+    return RedirectResponse("/", status_code=308)
+
+
+async def to_talk(request: Request) -> Response:
+    return RedirectResponse(f"/{TALK}/", status_code=308)
 
 
 async def intro(request: Request) -> Response:
@@ -83,7 +83,13 @@ async def poster(request: Request) -> Response:
 app = st.App(
     APP,
     routes=[
-        Route("/watch", watch),
+        Route("/", home),
+        Route("/watch", to_home),  # the home page's earlier address
+        Route(f"/{TALK}", to_talk),
+        Route("/robots.txt", robots),
+        Route("/sitemap.xml", sitemap),
+        Route("/llms.txt", llms),
+        Route("/favicon.svg", favicon),
         Route("/videos/veroniqa-intro.mp4", intro),
         Route("/videos/veroniqa-intro.jpg", poster),
     ],

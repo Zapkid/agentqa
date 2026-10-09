@@ -24,12 +24,12 @@ page, this page wins.
 | VeroniQA knowledge | uploads: 5 MB, type allowlist, file names reduced to a safe basename; links: http(s) only, no credentials, public addresses only (checked again after every redirect), 2 MB, text types only; every source goes through the injection scan; project ids are validated against path traversal | `veroniqa/knowledge.py`, `veroniqa/fetch.py`, `veroniqa/projects.py` |
 | VeroniQA answers | the model sees passages as delimited, untrusted data; citations to passages that were not retrieved are dropped and flagged | `veroniqa/rag.py` |
 | network exposure | the web UI, VeroniQA (Streamlit) and the MCP HTTP server bind to `127.0.0.1` by default; every compose port is published on `127.0.0.1` only | `cli.py`, `mcp/server.py`, `.streamlit/config.toml`, `deploy/docker-compose.yml` |
-| supply chain | every dependency has a floor and an upper bound; `uv.lock` pins the rest; CI installs with `--locked`; Dependabot proposes bumps; weekly `make audit` | `pyproject.toml`, `.github/` |
+| supply chain | every dependency, optional extra, dev tool and the build backend has a floor and an upper bound; `uv.lock` pins the rest; CI and the demo image install with `--locked`; tools installed outside the lockfile (`uvx`, `uv run --with`, `pip install` in images) are pinned to exact versions; Dependabot proposes bumps; weekly `make audit` | `pyproject.toml`, `Makefile`, `Dockerfile.vercel`, `.github/` |
 | lint | ruff security rules (`S`) run in CI; each intentional exception carries a reason in a `noqa` comment | `pyproject.toml` |
 
-Policy tests in `tests/test_hardening.py` fail if a dependency loses its upper bound, a compose port
-leaves loopback, a workflow loses least privilege or interpolates inputs into a shell, the target
-image runs as root, or the code starts using Chroma's HTTP client.
+Policy tests in `tests/test_hardening.py` fail if a dependency loses its upper bound, a tool install
+is unpinned, a compose port leaves loopback, a workflow loses least privilege or interpolates inputs
+into a shell, an image runs as root, or the code starts using Chroma's HTTP client.
 
 ## Review of 2026-10-08: what changed
 - Guardrails that were configured but not enforced now are: `sandbox.read_only_methods`,

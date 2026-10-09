@@ -84,8 +84,27 @@ def _dependency_specs() -> list[str]:
 
 
 def test_every_dependency_has_an_upper_bound() -> None:
-    uncapped = [s for s in _dependency_specs() if "<" not in s]
+    build = tomllib.loads((ROOT / "pyproject.toml").read_text())["build-system"]["requires"]
+    uncapped = [s for s in _dependency_specs() + build if "<" not in s and "==" not in s]
     assert not uncapped, f"add an upper bound to: {uncapped}"
+
+
+def test_tools_installed_outside_the_lockfile_are_pinned() -> None:
+    """uvx / `uv run --with` / pip installs in the Makefile and images bypass uv.lock."""
+    text = (ROOT / "Makefile").read_text()
+    specs = re.findall(r"(?:--with|uvx)\s+(\S+)", text)
+    assert specs, "expected tool installs in the Makefile"
+    loose = [s for s in specs if "==" not in s]
+    assert not loose, f"pin these tool versions: {loose}"
+    for image in ("Dockerfile.vercel", "deploy/Dockerfile.target"):
+        for line in (ROOT / image).read_text().splitlines():
+            if "pip install" in line:
+                pkgs = [
+                    w
+                    for w in line.split()
+                    if not w.startswith("-") and w not in {"RUN", "pip", "install", "\\"}
+                ]
+                assert all(("==" in w or "<" in w) for w in pkgs), f"{image}: {line}"
 
 
 def test_compose_publishes_ports_on_loopback_only() -> None:

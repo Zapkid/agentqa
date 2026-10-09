@@ -80,16 +80,72 @@ def test_hosted_app_gives_each_visitor_a_demo_workspace() -> None:
     assert _wid(again) == wid  # the link brings the same workspace back
 
 
-def test_watch_page_serves_only_the_introduction() -> None:
+def test_home_page_is_the_introduction_and_the_app_is_at_talk() -> None:
     client = TestClient(Starlette(routes=server.app._user_routes))
-    page = client.get("/watch")
+    page = client.get("/")
     assert page.status_code == 200 and "Content-Security-Policy" in page.headers
     assert (
         '<video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg"' in page.text
     )
-    assert page.text.count("<video") == 1
+    assert page.text.count("<video") == 1 and 'href="/talk/"' in page.text
+    for old, new in (("/watch", "/"), ("/talk", "/talk/")):
+        moved = client.get(old, follow_redirects=False)
+        assert moved.status_code == 308 and moved.headers["location"] == new
     part = client.get("/videos/veroniqa-intro.mp4", headers={"Range": "bytes=0-99"})
     assert part.status_code == 206 and len(part.content) == 100
     assert client.get("/videos/veroniqa-intro.jpg").headers["content-type"] == "image/jpeg"
     for other in ("01-cost-vs-quality.mp4", "veroniqa-intro.srt", "../pyproject.toml"):
         assert client.get(f"/videos/{other}").status_code == 404
+
+
+def test_streamlit_is_served_under_talk() -> None:
+    import streamlit as st
+
+    assert st.config.get_option("server.baseUrlPath") == server.TALK == "talk"
+
+
+def test_home_page_is_a_full_page_with_seo_metadata() -> None:
+    import json
+    import re
+
+    client = TestClient(Starlette(routes=server.app._user_routes))
+    page = client.get("/").text
+    for part in (
+        '<header class="site">',
+        '<footer class="site">',
+        '<main id="main">',
+        '<link rel="canonical" href="https://veroniqa.vercel.app/">',
+        'property="og:image"',
+        'name="twitter:card"',
+        'name="description"',
+        'href="/talk/"',
+        'id="transcript"',
+    ):
+        assert part in page, part
+    assert page.count("<h1") == 1
+    ld = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
+    assert ld
+    graph = json.loads(ld.group(1))["@graph"]
+    assert [g["@type"] for g in graph] == [
+        "WebSite",
+        "SoftwareApplication",
+        "VideoObject",
+        "FAQPage",
+    ]
+    video = graph[2]
+    assert video["duration"] == "PT1M25S" and "Meet VeroniQA" in video["transcript"]
+
+
+def test_robots_sitemap_llms_and_favicon() -> None:
+    client = TestClient(Starlette(routes=server.app._user_routes))
+    robots = client.get("/robots.txt").text
+    assert "User-agent: GPTBot\nAllow: /" in robots and "User-agent: ClaudeBot" in robots
+    assert "Sitemap: https://veroniqa.vercel.app/sitemap.xml" in robots
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.headers["content-type"].startswith("application/xml")
+    assert "<video:content_loc>https://veroniqa.vercel.app/videos/veroniqa-intro.mp4" in (
+        sitemap.text
+    )
+    llms = client.get("/llms.txt").text
+    assert llms.startswith("# VeroniQA\n\n> ") and "simulated models" in llms
+    assert client.get("/favicon.svg").headers["content-type"] == "image/svg+xml"
