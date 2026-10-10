@@ -481,7 +481,13 @@ def _shell(title: str, description: str, path: str, body: str, *, index: bool = 
     """A simple page (privacy, 404) with the site's header, footer and styles."""
     url = site_url()
     robots = "index, follow" if index else "noindex"
-    md = f"{path}.md" if path not in ("", "/") else "/index.md"
+    # Error pages have no canonical address and no Markdown twin of their own.
+    links = (
+        f'<link rel="canonical" href="{url}{path}">\n'
+        f'<link rel="alternate" type="text/markdown" href="{path}.md">\n'
+        if index
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -490,9 +496,7 @@ def _shell(title: str, description: str, path: str, body: str, *, index: bool = 
 <title>{_e(title)}</title>
 <meta name="description" content="{_e(description)}">
 <meta name="robots" content="{robots}">
-<link rel="canonical" href="{url}{path}">
-<link rel="alternate" type="text/markdown" href="{md}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+{links}<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#080c1a">
 <meta name="color-scheme" content="dark">
 <meta name="author" content="{AUTHOR}">

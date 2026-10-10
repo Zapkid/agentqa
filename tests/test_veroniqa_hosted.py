@@ -241,6 +241,7 @@ def test_unknown_addresses_are_real_404s_with_a_way_on() -> None:
         md = client.get(path, headers={"Accept": "text/markdown"})
         assert page.status_code == md.status_code == 404, path
         assert "Page not found" in page.text and 'href="/llms.txt"' in page.text
+        assert 'rel="canonical"' not in page.text and f'href="{path}.md"' not in page.text
         assert md.text.startswith("# Page not found (404)") and "/llms.txt" in md.text
         assert md.headers["content-type"] == "text/markdown; charset=utf-8"
     assert client.get("/talk/_stcore/health").text == "ok"  # Streamlit's own paths still work
