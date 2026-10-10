@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 INTRO = ROOT / "media/videos/veroniqa-intro.mp4"
 SUBTITLES = INTRO.with_suffix(".srt")
 REPO_URL = "https://github.com/Zapkid/agentqa"
+# What people search for: the brand together with the product.
+ALTERNATE_NAMES = ["VeroniQA AI assistant", "VeroniQA AI assistant for API testing"]
 AUTHOR = "Rowan Kendal"
 AUTHOR_URL = "https://www.rowan-kendal.com/"
 CONTACT_URL = f"{REPO_URL}/issues"
@@ -106,6 +108,12 @@ FAQ = [
         "find. To test your own API, run VeroniQA from the GitHub repository.",
     ),
     (
+        "Is there an API or a CLI?",
+        "Yes. The public API is a free, keyless sandbox described by an OpenAPI 3.1 document at "
+        "/openapi.json, with a guide at /developers. The official veroniqa command-line client "
+        "calls it.",
+    ),
+    (
         "Is it production-ready?",
         "No. It is a proof of concept that shows the approach end to end. Fitting it to a "
         "specific team's APIs, models and controls comes next.",
@@ -160,6 +168,9 @@ def structured_data() -> dict[str, object]:
                 "@type": "SoftwareApplication",
                 "@id": f"{url}/#app",
                 "name": NAME,
+                "alternateName": ALTERNATE_NAMES,
+                "sameAs": [REPO_URL],
+                "author": {"@id": f"{url}/#author"},
                 "url": f"{url}/talk/",
                 "applicationCategory": "DeveloperApplication",
                 "applicationSubCategory": "API testing",
@@ -169,6 +180,16 @@ def structured_data() -> dict[str, object]:
                 "codeRepository": REPO_URL,
                 "programmingLanguage": "Python",
                 "featureList": [title for title, _ in FEATURES],
+            },
+            {
+                "@type": "WebAPI",
+                "@id": f"{url}/#api",
+                "name": "VeroniQA public API",
+                "description": "Keyless sandbox API for VeroniQA: cited answers about the demo "
+                "API, published results and the demo API's OpenAPI spec.",
+                "documentation": f"{url}/developers",
+                "url": f"{url}/api",
+                "provider": {"@id": f"{url}/#author"},
             },
             {
                 "@type": "VideoObject",
@@ -338,6 +359,7 @@ nav.primary { margin-left:auto; display:flex; gap:22px; align-items:center; flex
                   box-shadow:0 0 10px #22c55e; }
 h1 { font-size:clamp(44px,7vw,72px); line-height:1.02; letter-spacing:-.035em; margin:0 0 14px; }
 .tagline { font-size:clamp(19px,2.4vw,23px); font-weight:500; margin:0 0 16px; }
+h1 .tagline { display:block; line-height:1.6; letter-spacing:normal; margin:14px 0 16px; }
 .lead { color:var(--teal); font-size:16.5px; max-width:58ch; margin:0 0 30px; opacity:.92; }
 .actions { display:flex; gap:12px; flex-wrap:wrap; }
 .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:0; padding:0; list-style:none; }
@@ -447,6 +469,7 @@ def _header() -> str:
       <a class="nav-link" href="/#features">Features</a>
       <a class="nav-link" href="/#how-it-works">How it works</a>
       <a class="nav-link" href="/#faq">FAQ</a>
+      <a class="nav-link" href="/developers">Developers</a>
       <a class="nav-link" href="{REPO_URL}" rel="noopener">GitHub</a>
       <a class="pill-btn" href="/talk/">Talk to VeroniQA</a>
     </nav>
@@ -465,6 +488,8 @@ def _footer() -> str:
     <nav aria-label="Footer">
       <a href="/">Home</a>
       <a href="/talk/">Talk to VeroniQA</a>
+      <a href="/developers">Developers</a>
+      <a href="/openapi.json">API (OpenAPI)</a>
       <a href="{REPO_URL}" rel="noopener">Source code</a>
       <a href="/privacy">Privacy</a>
       <a href="/.well-known/security.txt">Security</a>
@@ -503,7 +528,19 @@ def _shell(title: str, description: str, path: str, body: str, *, index: bool = 
 <style>{STYLE}
 .doc {{ padding-top:64px; padding-bottom:88px; }} .doc h1 {{ font-size:clamp(34px,5vw,48px); }}
 .doc h2 {{ font-size:22px; margin:36px 0 10px; }} .doc p, .doc li {{ color:var(--soft); max-width:72ch; }}
-.doc ul {{ padding-left:20px; }}</style>
+.doc ul {{ padding-left:20px; }}
+.doc pre {{ background:var(--surface); border:1px solid var(--line); border-radius:10px;
+            padding:16px 18px; overflow-x:auto; font-size:13.5px; line-height:1.55; }}
+.doc code {{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.92em;
+             color:var(--fg); }}
+.doc p code, .doc li code, .doc p a, .doc li a {{ overflow-wrap:anywhere; }}
+.doc .table {{ overflow-x:auto; }}
+.doc table {{ border-collapse:collapse; width:100%; font-size:14.5px; margin:8px 0 12px; }}
+.doc th, .doc td {{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--line);
+                    vertical-align:top; color:var(--soft); }}
+.doc th {{ color:var(--muted); font-weight:600; font-size:12.5px; text-transform:uppercase;
+           letter-spacing:.06em; }}
+.doc tr:target td {{ background:#7c6dfa14; }}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -564,6 +601,9 @@ def home_page() -> str:
 <link rel="alternate" type="text/markdown" href="/index.md" title="This page as Markdown">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="VeroniQA for language models">
 <link rel="manifest" href="/site.webmanifest">
+<link rel="api-catalog" href="/.well-known/api-catalog">
+<link rel="service-desc" type="application/vnd.oai.openapi+json" href="/openapi.json">
+<link rel="service-doc" type="text/html" href="/developers">
 <meta name="author" content="{AUTHOR}">
 <meta name="application-name" content="{NAME}">
 <meta property="og:locale" content="en_US">
@@ -579,8 +619,7 @@ def home_page() -> str:
     <div class="wrap hero-grid">
       <div>
         <p class="status">Live demo · no sign-up, no API keys</p>
-        <h1>VeroniQA</h1>
-        <p class="tagline grad">The AI assistant for API testing, built on AgentQA</p>
+        <h1>VeroniQA <span class="tagline grad">The AI assistant for API testing, built on AgentQA</span></h1>
         <p class="lead">Give her your requirements, documents and API docs. She answers with sources,
         writes and runs the tests, and explains every failure with evidence.</p>
         <div class="actions">
@@ -726,6 +765,10 @@ def sitemap_xml() -> str:
     <lastmod>{VIDEO_DATE}</lastmod>
   </url>
   <url>
+    <loc>{url}/developers</loc>
+    <lastmod>{PRIVACY_DATE}</lastmod>
+  </url>
+  <url>
     <loc>{url}/privacy</loc>
     <lastmod>{PRIVACY_DATE}</lastmod>
   </url>
@@ -752,6 +795,9 @@ account, sign-up or API key is needed: open {url}/talk/ and a private workspace 
   clients that send `Accept: text/markdown`
 - [Talk to VeroniQA (the app)]({url}/talk/): an interactive web app (it needs a browser with
   JavaScript); request it with `Accept: text/markdown` for a description
+- [Developers: API guide, quickstart, errors, rate limits, CLI]({url}/developers.md)
+- [OpenAPI 3.1 description of the public API]({url}/openapi.json)
+- [API catalog (RFC 9727)]({url}/.well-known/api-catalog)
 - [Privacy]({url}/privacy.md)
 - [Security contact]({url}/.well-known/security.txt)
 - [Source code: AgentQA and VeroniQA]({REPO_URL})
@@ -762,6 +808,14 @@ account, sign-up or API key is needed: open {url}/talk/ and a private workspace 
 ## Features
 
 {features}
+
+## API and CLI
+
+A free, keyless sandbox API at {url}/api (OpenAPI: {url}/openapi.json). `POST /api/v1/ask` with
+`{{"question": "..."}}` returns a cited answer from the demo API's requirement documents;
+`GET /api/v1/results` returns the measured results. Errors are RFC 9457 problem documents
+(`application/problem+json`) with a `code` and a `hint`. The official CLI is `veroniqa`
+(`pipx install "git+{REPO_URL}#subdirectory=clients/veroniqa-cli"`).
 
 ## Frequently asked questions
 
@@ -826,6 +880,7 @@ def home_markdown() -> str:
 - Try it: [{url}/talk/]({url}/talk/) (no sign-up, no API keys; a private workspace preloaded
   with a demo API is created for you)
 - Watch: [Meet VeroniQA, 85 s video]({url}/videos/veroniqa-intro.mp4)
+- Developers: [API guide and CLI]({url}/developers.md) · [OpenAPI]({url}/openapi.json)
 - Source code: [{REPO_URL}]({REPO_URL})
 - Built by [{AUTHOR}]({AUTHOR_URL})
 
