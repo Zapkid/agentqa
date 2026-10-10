@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from pathlib import Path
@@ -128,11 +129,12 @@ def test_home_page_is_a_full_page_with_seo_metadata() -> None:
     graph = json.loads(ld.group(1))["@graph"]
     assert [g["@type"] for g in graph] == [
         "WebSite",
+        "Person",
         "SoftwareApplication",
         "VideoObject",
         "FAQPage",
     ]
-    video = graph[2]
+    video = next(g for g in graph if g["@type"] == "VideoObject")
     assert video["duration"] == "PT1M25S" and "Meet VeroniQA" in video["transcript"]
 
 
@@ -185,3 +187,113 @@ def test_home_page_stats_match_the_result_files() -> None:
     page = site.home_page()
     for _icon, value, caption in site.stat_tiles():
         assert f">{value}</b><span>{caption}</span>" in page
+
+
+def _agent_client() -> TestClient:
+    """The site's routes, 404 handler and /talk/ middleware, with a stand-in for Streamlit's
+    app shell (the real one needs a running Streamlit runtime)."""
+    from starlette.middleware import Middleware
+    from starlette.requests import Request
+    from starlette.responses import HTMLResponse, PlainTextResponse, Response
+    from starlette.routing import Route
+
+    shell = "<!doctype html><html><head><title>Streamlit</title></head><body><div id=root></div></body></html>"
+
+    async def talk(request: Request) -> Response:
+        return HTMLResponse(shell)
+
+    async def health(request: Request) -> Response:
+        return PlainTextResponse("ok")
+
+    routes = [
+        *server.app._user_routes,
+        Route("/talk/", talk),
+        Route("/talk/_stcore/health", health),
+    ]
+    return TestClient(
+        Starlette(
+            routes=routes,
+            middleware=[Middleware(server.AgentFriendlyTalk)],
+            exception_handlers={404: server.not_found},
+        )
+    )
+
+
+@pytest.mark.parametrize("path", ["/", "/privacy"])
+def test_pages_negotiate_markdown_with_vary_and_link(path: str) -> None:
+    client = _agent_client()
+    page = client.get(path, headers={"Accept": "text/html"})
+    md = client.get(path, headers={"Accept": "text/markdown"})
+    assert page.headers["content-type"].startswith("text/html")
+    assert md.headers["content-type"] == "text/markdown; charset=utf-8"
+    assert md.text.startswith("# ")
+    for r in (page, md):
+        assert r.headers["vary"] == "Accept"  # one header, one value
+        assert 'rel="alternate"; type="text/markdown"' in r.headers["link"]
+    twin = client.get(page.headers["link"].split(">")[0][1:])
+    assert twin.status_code == 200 and twin.text == md.text
+
+
+def test_unknown_addresses_are_real_404s_with_a_way_on() -> None:
+    client = _agent_client()
+    for path in ("/nope", "/talk/nope", "/talk/a/b"):
+        page = client.get(path, headers={"Accept": "text/html"})
+        md = client.get(path, headers={"Accept": "text/markdown"})
+        assert page.status_code == md.status_code == 404, path
+        assert "Page not found" in page.text and 'href="/llms.txt"' in page.text
+        assert md.text.startswith("# Page not found (404)") and "/llms.txt" in md.text
+        assert md.headers["content-type"] == "text/markdown; charset=utf-8"
+    assert client.get("/talk/_stcore/health").text == "ok"  # Streamlit's own paths still work
+
+
+def test_talk_shell_is_readable_without_javascript_and_as_markdown() -> None:
+    client = _agent_client()
+    page = client.get("/talk/", headers={"Accept": "text/html"})
+    assert "<title>Talk to VeroniQA" in page.text and "<noscript><main><h1>" in page.text
+    assert 'name="description"' in page.text and int(page.headers["content-length"]) == len(
+        page.content
+    )
+    assert page.headers["vary"] == "Accept"
+    head = client.head("/talk/")
+    assert (
+        head.status_code == 200 and head.headers["content-length"] == page.headers["content-length"]
+    )
+    md = client.get("/talk/", headers={"Accept": "text/markdown"})
+    assert md.text.startswith("# Talk to VeroniQA") and "no sign-up" in md.text.lower()
+
+
+def test_trust_files_and_identity() -> None:
+    from datetime import UTC, datetime
+
+    from agentqa.veroniqa import site
+
+    client = _agent_client()
+    sec = client.get("/.well-known/security.txt").text
+    assert sec.startswith("Contact: https://") and "Expires: " in sec
+    expires = datetime.fromisoformat(sec.split("Expires: ")[1].split()[0].replace("Z", "+00:00"))
+    assert 0 < (expires - datetime.now(UTC)).days <= 365  # RFC 9116: under a year
+    assert client.get("/site.webmanifest").json()["name"].startswith("VeroniQA")
+    assert "Content-Signal: search=yes" in client.get("/robots.txt").text
+    assert "/privacy</loc>" in client.get("/sitemap.xml").text
+    home = client.get("/").text
+    for part in ('name="author"', 'rel="manifest"', 'href="/privacy"', "security.txt"):
+        assert part in home
+    graph = json.loads(site.home_page().split('application/ld+json">')[1].split("</script>")[0])
+    assert any(n["@type"] == "Person" and n["url"] == site.AUTHOR_URL for n in graph["@graph"])
+
+
+@pytest.mark.parametrize(
+    ("accept", "markdown"),
+    [
+        ("text/markdown", True),
+        ("text/markdown, text/html;q=0.9", True),
+        ("text/html, text/markdown;q=0.5", False),
+        ("text/html,application/xhtml+xml,*/*;q=0.8", False),
+        ("*/*", False),
+        ("", False),
+    ],
+)
+def test_prefers_markdown(accept: str, markdown: bool) -> None:
+    from agentqa.veroniqa import site
+
+    assert site.prefers_markdown(accept) is markdown

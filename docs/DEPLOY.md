@@ -8,6 +8,8 @@ The public demo is VeroniQA on its own URL (<https://veroniqa.vercel.app>):
 | `/talk/` | the VeroniQA app (Streamlit): chat, knowledge, test runs |
 | `/videos/veroniqa-intro.mp4` | the video itself, served with range requests so it streams and seeks |
 | `/robots.txt`, `/sitemap.xml`, `/llms.txt` | for search engines and AI assistants (see below) |
+| `/index.md`, `/privacy`, `/privacy.md`, `/talk.md` | Markdown twins and the privacy page (see below) |
+| `/.well-known/security.txt`, `/site.webmanifest` | security contact (RFC 9116) and the web app manifest |
 
 `/watch` (the home page's earlier address) and `/talk` redirect to the right place. Only the
 introduction is hosted; the three short promo films stay in the repository (`media/videos/`). The
@@ -37,6 +39,14 @@ repository (the subtitles, the video length), so they carry no claims the repo c
   ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended and others) and points to the
   sitemap; `sitemap.xml` includes a video entry; `llms.txt` is a plain-text summary for language
   models.
+- **Agent readiness** (the checks behind scores such as is-agentic.com): every page has a
+  Markdown twin, served for `Accept: text/markdown` with a single `Vary: Accept` header and a
+  `Link: <...>; rel="alternate"; type="text/markdown"` header, and at its `.md` address. Unknown
+  addresses get a real 404 (HTML or Markdown) that points to the home page, `llms.txt` and the
+  sitemap; this includes `/talk/<anything>`, where Streamlit would otherwise answer 200 with its
+  app shell. The `/talk/` shell itself gains a real title, a description and a `<noscript>`
+  summary (`AgentFriendlyTalk` in `server.py`). robots.txt carries a Content Signals line, and
+  there is a privacy page, a security.txt and an author in the structured data.
 - `VERONIQA_SITE_URL` sets the absolute address used in all of these (default
   `https://veroniqa.vercel.app`).
 

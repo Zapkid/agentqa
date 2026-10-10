@@ -12,6 +12,7 @@ import html
 import json
 import os
 import re
+from datetime import UTC, datetime, timedelta
 from functools import cache
 from pathlib import Path
 
@@ -19,6 +20,10 @@ ROOT = Path(__file__).resolve().parents[2]
 INTRO = ROOT / "media/videos/veroniqa-intro.mp4"
 SUBTITLES = INTRO.with_suffix(".srt")
 REPO_URL = "https://github.com/Zapkid/agentqa"
+AUTHOR = "Rowan Kendal"
+AUTHOR_URL = "https://www.rowan-kendal.com/"
+CONTACT_URL = f"{REPO_URL}/issues"
+SECURITY_CONTACT = f"{REPO_URL}/security/advisories/new"
 VIDEO_SECONDS = 85  # media/videos/veroniqa-intro.mp4 (85.2 s)
 VIDEO_DATE = "2026-10-09"
 
@@ -143,6 +148,13 @@ def structured_data() -> dict[str, object]:
                 "name": NAME,
                 "description": DESCRIPTION,
                 "inLanguage": "en",
+                "publisher": {"@id": f"{url}/#author"},
+            },
+            {
+                "@type": "Person",
+                "@id": f"{url}/#author",
+                "name": AUTHOR,
+                "url": AUTHOR_URL,
             },
             {
                 "@type": "SoftwareApplication",
@@ -426,6 +438,80 @@ def _e(text: str) -> str:
     return html.escape(text, quote=True)
 
 
+def _header() -> str:
+    return f"""<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=28)}<span>VeroniQA</span></a>
+    <nav class="primary" aria-label="Main">
+      <a class="nav-link" href="/#watch">Watch</a>
+      <a class="nav-link" href="/#features">Features</a>
+      <a class="nav-link" href="/#how-it-works">How it works</a>
+      <a class="nav-link" href="/#faq">FAQ</a>
+      <a class="nav-link" href="{REPO_URL}" rel="noopener">GitHub</a>
+      <a class="pill-btn" href="/talk/">Talk to VeroniQA</a>
+    </nav>
+  </div>
+</header>"""
+
+
+def _footer() -> str:
+    return f"""<footer class="site">
+  <div class="wrap">
+    <div>
+      <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=22)}<span>VeroniQA</span></a>
+      <p>A proof of concept built on AgentQA. The public demo uses simulated models. Built by
+      <a href="https://www.rowan-kendal.com/" rel="noopener">Rowan Kendal</a>.</p>
+    </div>
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/talk/">Talk to VeroniQA</a>
+      <a href="{REPO_URL}" rel="noopener">Source code</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/.well-known/security.txt">Security</a>
+      <a href="{CONTACT_URL}" rel="noopener">Contact</a>
+      <a href="/index.md">Markdown</a>
+      <a href="/llms.txt">llms.txt</a>
+      <a href="/sitemap.xml">Sitemap</a>
+    </nav>
+  </div>
+</footer>"""
+
+
+def _shell(title: str, description: str, path: str, body: str, *, index: bool = True) -> str:
+    """A simple page (privacy, 404) with the site's header, footer and styles."""
+    url = site_url()
+    robots = "index, follow" if index else "noindex"
+    md = f"{path}.md" if path not in ("", "/") else "/index.md"
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{_e(title)}</title>
+<meta name="description" content="{_e(description)}">
+<meta name="robots" content="{robots}">
+<link rel="canonical" href="{url}{path}">
+<link rel="alternate" type="text/markdown" href="{md}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#080c1a">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="{AUTHOR}">
+<style>{STYLE}
+.doc {{ padding-top:64px; padding-bottom:88px; }} .doc h1 {{ font-size:clamp(34px,5vw,48px); }}
+.doc h2 {{ font-size:22px; margin:36px 0 10px; }} .doc p, .doc li {{ color:var(--soft); max-width:72ch; }}
+.doc ul {{ padding-left:20px; }}</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{_header()}
+<main id="main"><div class="wrap doc">
+{body}
+</div></main>
+{_footer()}
+</body>
+</html>"""
+
+
 @cache
 def home_page() -> str:
     url = site_url()
@@ -471,25 +557,18 @@ def home_page() -> str:
 <meta name="twitter:title" content="{_e(TITLE)}">
 <meta name="twitter:description" content="{_e(DESCRIPTION)}">
 <meta name="twitter:image" content="{url}/videos/veroniqa-intro.jpg">
+<link rel="alternate" type="text/markdown" href="/index.md" title="This page as Markdown">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="VeroniQA for language models">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="author" content="{AUTHOR}">
+<meta name="application-name" content="{NAME}">
+<meta property="og:locale" content="en_US">
 <script type="application/ld+json">{ld}</script>
 <style>{STYLE}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="site">
-  <div class="wrap">
-    <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=28)}<span>VeroniQA</span></a>
-    <nav class="primary" aria-label="Main">
-      <a class="nav-link" href="#watch">Watch</a>
-      <a class="nav-link" href="#features">Features</a>
-      <a class="nav-link" href="#how-it-works">How it works</a>
-      <a class="nav-link" href="#faq">FAQ</a>
-      <a class="nav-link" href="{REPO_URL}" rel="noopener">GitHub</a>
-      <a class="pill-btn" href="/talk/">Talk to VeroniQA</a>
-    </nav>
-  </div>
-</header>
+{_header()}
 <main id="main">
   <div class="hero">
     <div class="hero-glow" aria-hidden="true"></div>
@@ -588,25 +667,14 @@ def home_page() -> str:
     </div>
   </section>
 </main>
-<footer class="site">
-  <div class="wrap">
-    <div>
-      <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=22)}<span>VeroniQA</span></a>
-      <p>A proof of concept built on AgentQA. The public demo uses simulated models. Built by
-      <a href="https://www.rowan-kendal.com/" rel="noopener">Rowan Kendal</a>.</p>
-    </div>
-    <nav aria-label="Footer">
-      <a href="/">Home</a>
-      <a href="/talk/">Talk to VeroniQA</a>
-      <a href="{REPO_URL}" rel="noopener">Source code</a>
-      <a href="{REPO_URL}/blob/main/docs/SECURITY.md" rel="noopener">Security</a>
-      <a href="/llms.txt">llms.txt</a>
-      <a href="/sitemap.xml">Sitemap</a>
-    </nav>
-  </div>
-</footer>
+{_footer()}
 </body>
 </html>"""
+
+
+# Content Signals (contentsignals.org): this page may be indexed for search, used to answer
+# questions (ai-input) and used for training (ai-train), in line with the crawlers allowed below.
+CONTENT_SIGNAL = "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
 
 
 def robots_txt() -> str:
@@ -624,7 +692,10 @@ def robots_txt() -> str:
         "Google-Extended",
         "Applebot-Extended",
     ):
-        lines += [f"User-agent: {agent}", "Allow: /", "Disallow: /talk/_stcore/", ""]
+        lines += [f"User-agent: {agent}", "Allow: /", "Disallow: /talk/_stcore/"]
+        if agent == "*":
+            lines.append(CONTENT_SIGNAL)
+        lines.append("")
     lines.append(f"Sitemap: {url}/sitemap.xml")
     return "\n".join(lines) + "\n"
 
@@ -650,6 +721,10 @@ def sitemap_xml() -> str:
     <loc>{url}/talk/</loc>
     <lastmod>{VIDEO_DATE}</lastmod>
   </url>
+  <url>
+    <loc>{url}/privacy</loc>
+    <lastmod>{PRIVACY_DATE}</lastmod>
+  </url>
 </urlset>
 """
 
@@ -663,13 +738,18 @@ def llms_txt() -> str:
 
 > {DESCRIPTION}
 
-VeroniQA is a proof of concept. The public demo at {url}/ uses simulated models and runs tests
-only against a bundled sample Orders API with planted bugs.
+VeroniQA is a proof of concept by {AUTHOR} ({AUTHOR_URL}). The public demo at {url}/ uses
+simulated models and runs tests only against a bundled sample Orders API with planted bugs. No
+account, sign-up or API key is needed: open {url}/talk/ and a private workspace is created.
 
 ## Links
 
-- [Home page with the introduction video]({url}/)
-- [Talk to VeroniQA (the app)]({url}/talk/)
+- [Home page with the introduction video]({url}/index.md): Markdown; also served at {url}/ to
+  clients that send `Accept: text/markdown`
+- [Talk to VeroniQA (the app)]({url}/talk/): an interactive web app (it needs a browser with
+  JavaScript); request it with `Accept: text/markdown` for a description
+- [Privacy]({url}/privacy.md)
+- [Security contact]({url}/.well-known/security.txt)
 - [Source code: AgentQA and VeroniQA]({REPO_URL})
 - [README]({REPO_URL}/blob/main/README.md)
 - [Security notes]({REPO_URL}/blob/main/docs/SECURITY.md)
@@ -687,3 +767,220 @@ only against a bundled sample Orders API with planted bugs.
 
 {" ".join(transcript())}
 """
+
+
+# ------------------------------------------------------------------ Markdown twins and trust pages
+
+PRIVACY_DATE = "2026-10-10"
+
+PRIVACY = [
+    (
+        "What this site collects",
+        [
+            "No accounts, no sign-up and no analytics or advertising trackers.",
+            "The hosting provider (Vercel) keeps standard request logs (address, time, page) to run "
+            "and protect the service.",
+            "The app at /talk/ sets one technical cookie (`_streamlit_xsrf`) that protects its forms "
+            "against cross-site request forgery. Nothing else is stored in your browser.",
+        ],
+    ),
+    (
+        "What you put into the demo",
+        [
+            "Projects, uploaded documents, fetched links and chat history live in a private, "
+            "temporary workspace on the server, reachable only through your workspace link.",
+            "Workspaces are deleted after 12 hours without use, and whenever the server restarts "
+            "or is redeployed.",
+            "The demo uses simulated models: nothing you upload or type is sent to an AI provider.",
+            "When you add a link, the server fetches that page (only from public addresses) to "
+            "index it.",
+            "Do not upload confidential or personal data: this is a public demo.",
+        ],
+    ),
+    (
+        "Contact",
+        [
+            f"Questions or requests: open an issue at {CONTACT_URL}. Security reports: "
+            f"{SECURITY_CONTACT} (see /.well-known/security.txt).",
+        ],
+    ),
+]
+
+
+def home_markdown() -> str:
+    """The home page as Markdown, for agents that ask for text/markdown."""
+    url = site_url()
+    tiles = "\n".join(f"- **{v}** {c}" for _, v, c in stat_tiles())
+    features = "\n".join(f"### {t}\n\n{d}\n" for t, d in FEATURES)
+    steps = "\n".join(f"{i}. **{t}.** {d}" for i, (t, d) in enumerate(STEPS, 1))
+    faq = "\n".join(f"### {q}\n\n{a}\n" for q, a in FAQ)
+    words = "\n\n".join(transcript())
+    return f"""# {TITLE}
+
+> {DESCRIPTION}
+
+- Try it: [{url}/talk/]({url}/talk/) (no sign-up, no API keys; a private workspace preloaded
+  with a demo API is created for you)
+- Watch: [Meet VeroniQA, 85 s video]({url}/videos/veroniqa-intro.mp4)
+- Source code: [{REPO_URL}]({REPO_URL})
+- Built by [{AUTHOR}]({AUTHOR_URL})
+
+## Measured results
+
+Measured on the simulated benchmark in the repository:
+
+{tiles}
+
+## Features
+
+{features}
+## How it works
+
+{steps}
+
+## Frequently asked questions
+
+{faq}
+## Video transcript
+
+{words}
+
+## More
+
+- [Privacy]({url}/privacy.md)
+- [Security contact]({url}/.well-known/security.txt)
+- [llms.txt]({url}/llms.txt)
+- [Sitemap]({url}/sitemap.xml)
+"""
+
+
+def talk_markdown() -> str:
+    """What /talk/ is, for agents: the app itself needs a browser with JavaScript."""
+    url = site_url()
+    return f"""# Talk to VeroniQA
+
+The VeroniQA app at {url}/talk/ is an interactive web app (Streamlit): it needs a browser with
+JavaScript and keeps a live connection while you use it. There is no sign-up and no API key.
+
+Opening it creates a private, temporary workspace (its id is kept in the page address as `?w=`)
+with a demo project: a sample Orders API, its requirement documents and planted bugs. In the app
+you can:
+
+- **Chat:** ask about the API; answers cite the passages they come from.
+- **Knowledge:** upload Markdown, text, HTML or PDF files, or add links, including OpenAPI or
+  Swagger files and Swagger UI pages.
+- **Test runs:** run AgentQA's tests against the demo API and read the findings.
+- **New project:** create more projects in the same workspace.
+
+The demo uses simulated models. To test your own API, run VeroniQA from {REPO_URL}.
+
+- [Home page]({url}/index.md)
+- [llms.txt]({url}/llms.txt)
+"""
+
+
+def privacy_markdown() -> str:
+    parts = [
+        f"# Privacy\n\nLast updated {PRIVACY_DATE}. This covers {site_url()}/ and the app at /talk/."
+    ]
+    for heading, items in PRIVACY:
+        parts.append(f"## {heading}\n\n" + "\n".join(f"- {i}" for i in items))
+    return "\n\n".join(parts) + "\n"
+
+
+def _md_inline(text: str) -> str:
+    """Escape, then render `code` spans and bare URLs."""
+    out = _e(text)
+    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    return re.sub(r"(https://[^\s<]+[^\s<.,)])", r'<a href="\1" rel="noopener">\1</a>', out)
+
+
+def privacy_page() -> str:
+    body = [
+        '<p class="eyebrow">Privacy</p>',
+        "<h1>Privacy</h1>",
+        f"<p>Last updated {PRIVACY_DATE}. This covers this site and the app at "
+        '<a href="/talk/">/talk/</a>.</p>',
+    ]
+    for heading, items in PRIVACY:
+        body.append(f"<h2>{_e(heading)}</h2><ul>")
+        body += [f"<li>{_md_inline(i)}</li>" for i in items]
+        body.append("</ul>")
+    return _shell(
+        "Privacy · VeroniQA",
+        "What the VeroniQA demo stores, for how long, and how to reach the author.",
+        "/privacy",
+        "\n".join(body),
+    )
+
+
+def not_found_markdown(path: str) -> str:
+    url = site_url()
+    return f"""# Page not found (404)
+
+There is nothing at `{path}`. Useful places:
+
+- [Home page]({url}/index.md)
+- [Talk to VeroniQA]({url}/talk/)
+- [llms.txt]({url}/llms.txt): a summary of this site for language models
+- [Sitemap]({url}/sitemap.xml)
+"""
+
+
+def not_found_page(path: str) -> str:
+    body = f"""<p class="eyebrow">404</p>
+<h1>Page not found</h1>
+<p>There is nothing at <code>{_e(path)}</code>.</p>
+<p class="actions" style="margin-top:28px"><a class="btn primary" href="/">Go to the home page</a>
+<a class="btn" href="/talk/">Talk to VeroniQA</a></p>
+<p>Agents: <a href="/llms.txt">llms.txt</a> summarises this site, and
+<a href="/sitemap.xml">sitemap.xml</a> lists its pages.</p>"""
+    return _shell("Page not found · VeroniQA", "This page does not exist.", path, body, index=False)
+
+
+def security_txt(now: datetime | None = None) -> str:
+    """RFC 9116. Expires is kept about six months ahead."""
+    expires = (now or datetime.now(UTC)) + timedelta(days=180)
+    url = site_url()
+    return (
+        f"Contact: {SECURITY_CONTACT}\n"
+        f"Contact: {CONTACT_URL}\n"
+        f"Expires: {expires.strftime('%Y-%m-%dT00:00:00Z')}\n"
+        "Preferred-Languages: en\n"
+        f"Canonical: {url}/.well-known/security.txt\n"
+        f"Policy: {REPO_URL}/blob/main/docs/SECURITY.md\n"
+    )
+
+
+def web_manifest() -> str:
+    return json.dumps(
+        {
+            "name": TITLE,
+            "short_name": NAME,
+            "description": DESCRIPTION,
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#080c1a",
+            "theme_color": "#080c1a",
+            "icons": [{"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml"}],
+        },
+        indent=2,
+    )
+
+
+def prefers_markdown(accept: str) -> bool:
+    """True when the Accept header ranks text/markdown at least as high as text/html."""
+    q: dict[str, float] = {}
+    for part in accept.lower().split(","):
+        media, *params = (x.strip() for x in part.split(";"))
+        weight = 1.0
+        for param in params:
+            if param.startswith("q="):
+                try:
+                    weight = float(param[2:])
+                except ValueError:
+                    weight = 0.0
+        q[media] = max(q.get(media, 0.0), weight)
+    md = q.get("text/markdown", 0.0)
+    html_q = max(q.get("text/html", 0.0), q.get("application/xhtml+xml", 0.0))
+    return md > 0 and md >= html_q
