@@ -9,10 +9,14 @@ pages themselves are in site.py.
 Agents get the same content as people: every page has a Markdown twin (`Accept: text/markdown`
 or the `.md` address), unknown addresses return a real 404 with links onward, and the JavaScript
 app at /talk/ carries a server-rendered description for clients that do not run scripts.
+
+The public API (public_api.py) is mounted at /api; its OpenAPI description is at /openapi.json
+(and .yaml), its RFC 9727 catalog at /.well-known/api-catalog and its guide at /developers.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -27,10 +31,10 @@ from starlette.responses import (
     RedirectResponse,
     Response,
 )
-from starlette.routing import Route
+from starlette.routing import Mount, Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from agentqa.veroniqa import site
+from agentqa.veroniqa import devportal, public_api, site
 
 APP = Path(__file__).with_name("app.py")
 INTRO = site.INTRO  # captions are burned in
@@ -57,13 +61,25 @@ SECURITY_HEADERS = {
 PAGE = {**SECURITY_HEADERS, "Cache-Control": "public, max-age=300", "Vary": "Accept"}
 CACHE = {"Cache-Control": "public, max-age=86400"}
 MARKDOWN = "text/markdown; charset=utf-8"
+# RFC 9727 section 4.1: the catalog is a linkset with this profile.
+API_CATALOG = 'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
+# For agents arriving at any page: where the API is described (RFC 8631) and catalogued (RFC 9727).
+API_LINKS = (
+    '</openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json", '
+    '</developers>; rel="service-doc"; type="text/html", '
+    '</.well-known/api-catalog>; rel="api-catalog"'
+)
+OPEN = {**CACHE, "Access-Control-Allow-Origin": "*"}
 
 
 def _negotiated(
     request: Request, html: str, markdown: str, md_path: str, status: int = 200
 ) -> Response:
     """The same page as HTML or Markdown, by the Accept header, with a Link to the Markdown twin."""
-    headers = {**PAGE, "Link": f'<{md_path}>; rel="alternate"; type="text/markdown"'}
+    link = f'<{md_path}>; rel="alternate"; type="text/markdown"'
+    if status == 200:
+        link = f"{link}, {API_LINKS}"
+    headers = {**PAGE, "Link": link}
     if site.prefers_markdown(request.headers.get("accept", "")):
         return Response(markdown, status_code=status, media_type=MARKDOWN, headers=headers)
     return HTMLResponse(html, status_code=status, headers=headers)
@@ -93,6 +109,32 @@ async def talk_md(request: Request) -> Response:
     return _markdown(site.talk_markdown())
 
 
+async def developers(request: Request) -> Response:
+    return _negotiated(
+        request, devportal.developers_page(), devportal.developers_markdown(), "/developers.md"
+    )
+
+
+async def developers_md(request: Request) -> Response:
+    return _markdown(devportal.developers_markdown())
+
+
+async def openapi_json(request: Request) -> Response:
+    return Response(public_api.openapi_json(), media_type="application/json", headers=OPEN)
+
+
+async def openapi_yaml(request: Request) -> Response:
+    return Response(
+        public_api.openapi_yaml(), media_type="application/yaml; charset=utf-8", headers=OPEN
+    )
+
+
+async def api_catalog(request: Request) -> Response:
+    body = json.dumps(public_api.api_catalog(), indent=2)  # Starlette drops it for HEAD
+    headers = {**OPEN, "Link": '</.well-known/api-catalog>; rel="api-catalog"'}
+    return Response(body, media_type=API_CATALOG, headers=headers)
+
+
 async def robots(request: Request) -> Response:
     return PlainTextResponse(site.robots_txt(), headers=CACHE)
 
@@ -119,6 +161,11 @@ async def favicon(request: Request) -> Response:
 
 async def to_home(request: Request) -> Response:
     return RedirectResponse("/", status_code=308)
+
+
+async def to_api(request: Request) -> Response:
+    # Relative, so it stays one hop behind the HTTPS edge (Mount's own redirect is absolute).
+    return RedirectResponse("/api/", status_code=308)
 
 
 async def to_talk(request: Request) -> Response:
@@ -245,6 +292,15 @@ app = st.App(
         Route("/privacy", privacy),
         Route("/privacy.md", privacy_md),
         Route(f"/{TALK}.md", talk_md),
+        Route("/developers", developers),
+        Route("/developers.md", developers_md),
+        Route("/openapi.json", openapi_json),
+        Route("/openapi.yaml", openapi_yaml),
+        Route("/api/openapi.json", openapi_json),
+        Route("/api/openapi.yaml", openapi_yaml),
+        Route("/.well-known/api-catalog", api_catalog),
+        Route("/api", to_api),
+        Mount("/api", public_api.api),
         Route("/watch", to_home),  # the home page's earlier address
         Route(f"/{TALK}", to_talk),
         Route("/robots.txt", robots),

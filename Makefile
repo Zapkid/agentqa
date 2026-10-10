@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa veroniqa-hosted videos video-intro clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa veroniqa-hosted cli videos video-intro clean
 
 install:
 	$(UV) sync
@@ -27,6 +27,10 @@ test-fast:
 
 cov:
 	$(UV) run pytest --cov --cov-report=term-missing
+
+# The official CLI (clients/veroniqa-cli): build its wheel and sdist into clients/veroniqa-cli/dist.
+cli:
+	$(UV) build clients/veroniqa-cli
 
 secrets:
 	$(PY) scripts/secret_scan.py

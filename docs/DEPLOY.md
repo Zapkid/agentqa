@@ -10,6 +10,10 @@ The public demo is VeroniQA on its own URL (<https://veroniqa.vercel.app>):
 | `/robots.txt`, `/sitemap.xml`, `/llms.txt` | for search engines and AI assistants (see below) |
 | `/index.md`, `/privacy`, `/privacy.md`, `/talk.md` | Markdown twins and the privacy page (see below) |
 | `/.well-known/security.txt`, `/site.webmanifest` | security contact (RFC 9116) and the web app manifest |
+| `/api/v1/...` | the public API: status, results, `POST /api/v1/ask` (cited answers from the demo documents) and the demo API's spec |
+| `/openapi.json`, `/openapi.yaml` (also under `/api/`) | the public API's OpenAPI 3.1 description |
+| `/.well-known/api-catalog` | the API catalog (RFC 9727): a linkset pointing to the OpenAPI, the guide and the status endpoint |
+| `/developers`, `/developers.md` | the developer portal: quickstart, keys (none), endpoints, errors, rate limits, sandbox, CLI |
 
 `/watch` (the home page's earlier address) and `/talk` redirect to the right place. Only the
 introduction is hosted; the three short promo films stay in the repository (`media/videos/`). The
@@ -47,6 +51,18 @@ repository (the subtitles, the video length), so they carry no claims the repo c
   app shell. The `/talk/` shell itself gains a real title, a description and a `<noscript>`
   summary (`AgentFriendlyTalk` in `server.py`). robots.txt carries a Content Signals line, and
   there is a privacy page, a security.txt and an author in the structured data.
+- **The public API** (`agentqa/veroniqa/public_api.py`, a FastAPI app mounted at `/api`) answers
+  from the same simulated demo agent as the app. It needs no key; each client gets 60 requests a
+  minute (10 for `/v1/ask`), reported with the IETF `RateLimit-Policy` and `RateLimit` headers.
+  Every error, including unknown paths and wrong methods under `/api`, is an RFC 9457
+  `application/problem+json` document with a stable `code` and a `hint`, and each code has an
+  anchor in the developer portal (its `type`). The OpenAPI document is generated from the code, so
+  it cannot drift; every page links to it (`Link: rel="service-desc"`, `rel="api-catalog"`), and
+  the developer portal (`devportal.py`) builds its endpoint and error tables from it.
+- **The CLI** (`clients/veroniqa-cli`, the `veroniqa` command) is a standard-library-only Python
+  package. It installs from the repository today
+  (`pipx install "git+https://github.com/Zapkid/agentqa#subdirectory=clients/veroniqa-cli"`);
+  `make cli` builds the wheel. Publishing it to PyPI needs a PyPI account (see the end of this page).
 - `VERONIQA_SITE_URL` sets the absolute address used in all of these (default
   `https://veroniqa.vercel.app`).
 
@@ -89,3 +105,11 @@ The image runs as an unprivileged user, listens on `$PORT` and writes only under
 make veroniqa-hosted     # hosted mode on http://127.0.0.1:8502 (home page with the video; app at /talk/)
 make veroniqa            # the normal single-user app on http://127.0.0.1:8501
 ```
+
+## Publishing the CLI to PyPI (needs the owner's PyPI account)
+
+The name `veroniqa` was free on PyPI when the CLI was written. To publish: create the project on
+PyPI with a trusted publisher for this repository (PyPI → Publishing → add a GitHub publisher),
+then build and upload with `make cli` and `uv publish clients/veroniqa-cli/dist/*`, or from a
+tagged GitHub Actions job using the trusted publisher. After that, `pipx install veroniqa` works
+and the developer portal's install line can be shortened.

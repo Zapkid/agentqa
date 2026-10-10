@@ -131,6 +131,7 @@ def test_home_page_is_a_full_page_with_seo_metadata() -> None:
         "WebSite",
         "Person",
         "SoftwareApplication",
+        "WebAPI",
         "VideoObject",
         "FAQPage",
     ]
