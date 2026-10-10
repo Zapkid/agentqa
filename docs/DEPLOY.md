@@ -31,6 +31,8 @@ repository (the subtitles, the video length), so they carry no claims the repo c
 - Structured data (JSON-LD): `WebSite`, `SoftwareApplication`, `VideoObject` (with duration,
   thumbnail and the full transcript) and `FAQPage`.
 - The video transcript as text on the page, so the content is readable without playing it.
+- The hero's six result tiles (bugs found, relative cost, performance defects caught and so on) are
+  checked against the latest `results/*.json` by a test, like the README's Results section.
 - `robots.txt` explicitly allows the major search and AI crawlers (GPTBot, OAI-SearchBot,
   ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended and others) and points to the
   sitemap; `sitemap.xml` includes a video entry; `llms.txt` is a plain-text summary for language

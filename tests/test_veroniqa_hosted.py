@@ -160,3 +160,28 @@ def test_hosted_visitor_can_create_a_project() -> None:
     assert not at.exception, at.exception
     assert at.header[0].value == "Billing API"
     assert (hosted.workspace_root(_wid(at)) / "billing-api" / "project.yaml").exists()
+
+
+def test_home_page_stats_match_the_result_files() -> None:
+    import json
+
+    from agentqa.evals.report import latest_results
+    from agentqa.veroniqa import site
+
+    func_path, perf_path = latest_results()
+    assert func_path and perf_path
+    st = json.loads(func_path.read_text())["strategies"]
+    cases = json.loads(perf_path.read_text())["cases"]
+    s0, s3 = st["S0"]["aggregate"], st["S3"]["aggregate"]
+    ratio = s3["cost_usd_list_equivalent"]["mean"] / s0["cost_usd_list_equivalent"]["mean"]
+    assert site.STATS["recall_pct"] == round(s3["recall"]["mean"] * 100)
+    assert site.STATS["cost_pct"] == round(ratio * 100)
+    assert site.STATS["perf_caught"] == sum(bool(c["regressed"]) for c in cases)
+    assert site.STATS["perf_total"] == len(cases)
+    assert site.STATS["cost_levers"] == sum(name.startswith("S3-no-") for name in st)
+    from agentqa.evals.groundtruth import BUG_IDS
+
+    assert site.STATS["planted_bugs"] == len(BUG_IDS)
+    page = site.home_page()
+    for _icon, value, caption in site.stat_tiles():
+        assert f">{value}</b><span>{caption}</span>" in page

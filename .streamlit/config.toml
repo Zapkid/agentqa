@@ -10,3 +10,13 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "minimal"
+
+# Same palette as the public site (agentqa/veroniqa/site.py).
+[theme]
+base = "dark"
+primaryColor = "#7c6dfa"
+backgroundColor = "#080c1a"
+secondaryBackgroundColor = "#111118"
+textColor = "#e8e8f0"
+borderColor = "#2a2a35"
+linkColor = "#a99bff"

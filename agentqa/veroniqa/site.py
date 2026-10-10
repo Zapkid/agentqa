@@ -188,79 +188,237 @@ def structured_data() -> dict[str, object]:
 
 LOGO = (
     '<svg viewBox="0 0 64 64" width="{size}" height="{size}" aria-hidden="true" focusable="false">'
-    '<rect x="4" y="4" width="56" height="46" rx="14" fill="#ee7b3a"/>'
-    '<path d="M18 50 L14 60 L28 50 Z" fill="#ee7b3a"/>'
+    '<defs><linearGradient id="vq-g{size}" x1="0" y1="0" x2="1" y2="1">'
+    '<stop offset="0" stop-color="#a99bff"/><stop offset="1" stop-color="#7c6dfa"/>'
+    "</linearGradient></defs>"
+    '<rect x="4" y="4" width="56" height="46" rx="14" fill="url(#vq-g{size})"/>'
+    '<path d="M18 50 L14 60 L28 50 Z" fill="#7c6dfa"/>'
     '<path d="M20 27 L29 36 L45 18" fill="none" stroke="#fff" stroke-width="6" '
     'stroke-linecap="round" stroke-linejoin="round"/></svg>'
 )
 
 FAVICON = LOGO.replace('width="{size}" height="{size}" aria-hidden="true" focusable="false"', "")
-FAVICON = FAVICON.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ', 1)
+FAVICON = FAVICON.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ', 1).replace(
+    "{size}", "f"
+)
+
+# Headline numbers for the hero tiles. They come from the latest results/*.json (the same files
+# as the README's Results section); tests/test_veroniqa_hosted.py fails if they drift. The image
+# does not ship results/, so the values are kept here.
+STATS = {
+    "recall_pct": 94,  # S3 (cost-aware routing): mean share of planted bugs found
+    "cost_pct": 47,  # S3 cost as a share of S0 (strongest model for everything)
+    "perf_caught": 6,  # performance defects flagged
+    "perf_total": 6,
+    "planted_bugs": 12,  # functional bugs planted in the bundled Orders API
+    "cost_levers": 10,  # mechanisms switched off one at a time (S3-no-* ablations)
+}
+
+_ICON = {
+    "target": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>'
+    '<circle cx="12" cy="12" r="1"/>',
+    "coins": '<circle cx="9" cy="9" r="6"/><path d="M18.1 10.4a6 6 0 1 1-7.7 7.7"/>'
+    '<path d="M8 7h2v4"/>',
+    "gauge": '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>',
+    "bug": '<rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2M5 7l3 2'
+    'M19 19l-3-2M5 19l3-2M20 13h-4M4 13h4M10 4l1 2M14 4l-1 2"/>',
+    "sliders": '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    "key": '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
+    "play": '<polygon points="6 3 20 12 6 21 6 3"/>',
+    "chat": '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    "github": '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-.9-2.6c3.1-.3 6.4-1.5 '
+    "6.4-7A5.4 5.4 0 0 0 20 4.8 5 5 0 0 0 19.9 1S18.7.7 16 2.5a13.4 13.4 0 0 0-7 0C6.3.7 "
+    "5.1 1 5.1 1A5 5 0 0 0 5 4.8a5.4 5.4 0 0 0-1.5 3.7c0 5.4 3.3 6.6 6.4 7A3.4 3.4 0 0 0 9 "
+    '18.1V22"/>',
+}
+
+
+def _icon(name: str, size: int = 20) -> str:
+    return (
+        f'<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" '
+        'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
+        f'stroke-linejoin="round" aria-hidden="true" focusable="false">{_ICON[name]}</svg>'
+    )
+
+
+def stat_tiles() -> list[tuple[str, str, str]]:
+    """(icon, value, caption) for the hero grid."""
+    s = STATS
+    return [
+        ("target", f"{s['recall_pct']}%", "of planted bugs found"),
+        ("coins", f"{s['cost_pct']}%", "of the cost of the strongest model"),
+        ("gauge", f"{s['perf_caught']}/{s['perf_total']}", "performance defects caught"),
+        ("bug", str(s["planted_bugs"]), "bugs planted in the demo API"),
+        ("sliders", str(s["cost_levers"]), "cost levers, each measured"),
+        ("key", "0", "API keys needed to try it"),
+    ]
+
+
+STACK = [
+    "Python 3.12",
+    "FastAPI",
+    "Streamlit",
+    "Chroma vector store",
+    "BM25 hybrid retrieval",
+    "OpenAPI 3 · Swagger 2",
+    "pytest",
+    "OpenTelemetry",
+    "Model Context Protocol",
+    "Locust",
+    "Claude",
+    "Gemini",
+    "OpenRouter",
+    "Prompt-injection quarantine",
+    "SSRF-safe links",
+    "Replay-gated CI",
+]
 
 STYLE = """
-:root { --bg:#0b1020; --surface:#121a30; --line:#24304d; --fg:#e8ecf6; --muted:#a3acc2;
-        --accent:#ee7b3a; --accent-ink:#1a0d04; --link:#8fb0ff; }
-@media (prefers-color-scheme: light) {
-  :root { --bg:#f7f8fb; --surface:#ffffff; --line:#e3e7ef; --fg:#141824; --muted:#5a6275;
-          --accent:#d8611f; --accent-ink:#ffffff; --link:#2f5fe0; }
-}
+:root { color-scheme:dark; --bg:#080c1a; --surface:#111118; --surface-2:#18181f; --line:#2a2a35;
+        --fg:#e8e8f0; --soft:#c8c8d8; --muted:#8888a0; --accent:#7c6dfa; --accent-2:#a99bff;
+        --teal:#5eead4; }
 * { box-sizing:border-box; }
-html { scroll-behavior:smooth; }
-body { margin:0; background:var(--bg); color:var(--fg);
-       font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-a { color:var(--link); }
-.wrap { max-width:1120px; margin:0 auto; padding:0 16px; }
+html { scroll-behavior:smooth; background:var(--bg); overflow-x:clip; }
+body { margin:0; color:var(--fg); background:var(--bg); -webkit-font-smoothing:antialiased;
+       font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; }
+::selection { color:var(--accent-2); background:#7c6dfa33; }
+a { color:var(--accent-2); }
+.wrap { max-width:1100px; margin:0 auto; padding:0 16px; }
 .skip { position:absolute; left:-999px; }
 .skip:focus { left:16px; top:8px; background:var(--surface); padding:8px 12px; z-index:10; }
-header.site { position:sticky; top:0; z-index:5; background:color-mix(in srgb,var(--bg) 88%,transparent);
-              backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
-header.site .wrap { display:flex; align-items:center; gap:16px; min-height:64px; flex-wrap:wrap; }
-.brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:20px;
+.grad { background:linear-gradient(90deg,var(--accent-2),var(--teal)); -webkit-background-clip:text;
+        background-clip:text; color:transparent; }
+
+header.site { position:sticky; top:0; z-index:5; background:#0a0a0fcc; backdrop-filter:blur(12px);
+              border-bottom:1px solid var(--line); }
+header.site .wrap { display:flex; align-items:center; gap:20px; min-height:60px; flex-wrap:wrap; }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px;
          color:var(--fg); text-decoration:none; }
-nav.primary { margin-left:auto; display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
-nav.primary a { color:var(--muted); text-decoration:none; font-weight:500; }
-nav.primary a:hover, nav.primary a:focus-visible { color:var(--fg); }
-.btn { display:inline-block; padding:10px 18px; border-radius:10px; font-weight:600;
-       text-decoration:none; border:1px solid var(--line); color:var(--fg); }
-.btn.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
-nav.primary a.btn.primary { color:var(--accent-ink); }
-.hero { padding-top:56px; padding-bottom:24px; }
-.eyebrow { color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-           font-size:13px; margin:0 0 12px; }
-h1 { font-size:clamp(32px,5.5vw,56px); line-height:1.1; letter-spacing:-.02em; margin:0 0 16px; }
-.lead { color:var(--muted); font-size:clamp(17px,2.2vw,20px); max-width:62ch; margin:0 0 28px; }
-.actions { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:32px; }
+nav.primary { margin-left:auto; display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
+.nav-link { font-size:13px; text-decoration:none; white-space:nowrap; color:transparent;
+            background:linear-gradient(90deg,var(--accent-2) 0%,var(--teal) 49%,var(--muted) 51% 100%)
+            100% 0/200% 100%; -webkit-background-clip:text; background-clip:text;
+            transition:background-position .4s; }
+.nav-link:hover, .nav-link:focus-visible { background-position:0 0; }
+.pill-btn { color:var(--accent-2); background:#7c6dfa24; border:1px solid #7c6dfa73;
+            border-radius:100px; padding:7px 16px; font-size:13px; font-weight:600;
+            text-decoration:none; white-space:nowrap; transition:background-color .2s,color .2s; }
+.pill-btn:hover, .pill-btn:focus-visible { color:#fff; background:#7c6dfa47; border-color:#7c6dfacc; }
+
+.btn { display:inline-flex; align-items:center; gap:8px; padding:12px 22px; border-radius:8px;
+       font-size:14px; font-weight:600; text-decoration:none; color:var(--fg);
+       border:1px solid var(--line); transition:border-color .2s,background-color .2s; }
+.btn:hover, .btn:focus-visible { border-color:var(--accent); background:#7c6dfa0f; }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.primary:hover, .btn.primary:focus-visible { background:#9187fb; }
+
+.hero { position:relative; padding:72px 0 64px; overflow:hidden; }
+.hero-glow { position:absolute; top:-80px; left:-120px; width:600px; height:600px; border-radius:50%;
+             background:radial-gradient(circle,#7c6dfa2e,transparent 70%); filter:blur(80px);
+             pointer-events:none; animation:drift 8s ease-in-out infinite alternate; }
+@keyframes drift { from { transform:translate(-10%,-10%) scale(1); } to { transform:translate(10%,10%) scale(1.1); } }
+.hero-grid { position:relative; z-index:1; display:grid; gap:56px; align-items:center;
+             grid-template-columns:minmax(0,1fr) 400px; }
+.status { display:inline-flex; align-items:center; gap:8px; padding:5px 14px; border-radius:100px;
+          border:1px solid #7c6dfa59; background:#7c6dfa14; color:var(--accent-2); font-size:13px;
+          margin:0 0 22px; }
+.status::before { content:""; width:8px; height:8px; border-radius:50%; background:#22c55e;
+                  box-shadow:0 0 10px #22c55e; }
+h1 { font-size:clamp(44px,7vw,72px); line-height:1.02; letter-spacing:-.035em; margin:0 0 14px; }
+.tagline { font-size:clamp(19px,2.4vw,23px); font-weight:500; margin:0 0 16px; }
+.lead { color:var(--teal); font-size:16.5px; max-width:58ch; margin:0 0 30px; opacity:.92; }
+.actions { display:flex; gap:12px; flex-wrap:wrap; }
+.tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:0; padding:0; list-style:none; }
+.tile { background:#111118eb; border:1px solid #2a2a35e6; border-radius:12px; padding:16px 10px;
+        min-height:126px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:6px; text-align:center; box-shadow:inset 0 1px #ffffff0a; transition:border-color .2s; }
+.tile:hover { border-color:#7c6dfa66; }
+.tile svg { color:#7c6dfa; }
+.tile b { font-size:30px; line-height:1.1; font-weight:700; letter-spacing:-.02em; }
+.tile span { color:var(--muted); font-size:12px; line-height:1.35; }
+.tiles-note { color:var(--muted); font-size:12px; margin:10px 2px 0; text-align:right; }
+
+.marquee { overflow:hidden; padding:6px 0 0;
+           -webkit-mask-image:linear-gradient(90deg,transparent,#000 8% 92%,transparent);
+           mask-image:linear-gradient(90deg,transparent,#000 8% 92%,transparent); }
+.marquee-track { display:flex; gap:10px; width:max-content; margin:0; padding:0; list-style:none;
+                 animation:marquee 40s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state:paused; }
+@keyframes marquee { to { transform:translateX(-50%); } }
+.marquee li { color:var(--muted); background:var(--surface); border:1px solid var(--line);
+              border-radius:100px; padding:5px 14px; font-size:13px; white-space:nowrap; }
+
+section { padding:88px 0; border-top:1px solid var(--line); }
+.eyebrow { display:flex; align-items:center; gap:8px; color:var(--accent-2); font-size:12.5px;
+           font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin:0 0 12px; }
+.eyebrow::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); }
+h2 { font-size:clamp(28px,4vw,40px); line-height:1.15; letter-spacing:-.025em; margin:0 0 12px; }
+.section-lead { color:var(--muted); font-size:16.5px; margin:0 0 36px; max-width:62ch; }
+
+.frame { padding:2px; border-radius:16px; background:linear-gradient(var(--surface),var(--surface)) padding-box,
+         conic-gradient(from var(--angle),#6366f1,#7c6dfa,#5eead4,#a99bff,#6366f1) border-box;
+         border:2px solid transparent; animation:spin 4s linear infinite; }
+@property --angle { syntax:"<angle>"; inherits:false; initial-value:0deg; }
+@keyframes spin { to { --angle:360deg; } }
+video { width:100%; aspect-ratio:16/9; border-radius:13px; background:#000; display:block; }
 figure.video { margin:0; }
-video { width:100%; aspect-ratio:16/9; border-radius:16px; background:#000; display:block;
-        border:1px solid var(--line); }
-figcaption { color:var(--muted); font-size:14px; margin-top:10px; }
-section { padding:56px 0; border-top:1px solid var(--line); }
-h2 { font-size:clamp(24px,3.4vw,34px); letter-spacing:-.01em; margin:0 0 8px; }
-.section-lead { color:var(--muted); margin:0 0 28px; max-width:65ch; }
+figcaption { color:var(--muted); font-size:14px; margin-top:14px; }
+
 .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
-.card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px; }
-.card h3 { margin:0 0 6px; font-size:18px; }
-.card p { margin:0; color:var(--muted); }
+.card { background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:24px;
+        transition:border-color .2s,transform .2s; }
+.card:hover { border-color:#7c6dfa66; transform:translateY(-2px); }
+.card h3 { margin:0 0 8px; font-size:17px; }
+.card p { margin:0; color:var(--muted); font-size:15px; }
+.card .num { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.06em;
+             color:var(--accent-2); margin-bottom:10px; }
+
 ol.steps { list-style:none; padding:0; margin:0; display:grid; gap:16px;
-           grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); counter-reset:step; }
+           grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); counter-reset:step; }
 ol.steps li { counter-increment:step; background:var(--surface); border:1px solid var(--line);
-              border-radius:14px; padding:20px; }
-ol.steps li::before { content:counter(step); display:inline-grid; place-items:center; width:32px;
-              height:32px; border-radius:50%; background:var(--accent); color:var(--accent-ink);
-              font-weight:700; margin-bottom:10px; }
-ol.steps h3 { margin:0 0 4px; font-size:18px; }
-ol.steps p { margin:0; color:var(--muted); }
+              border-radius:12px; padding:22px; }
+ol.steps li::before { content:"0" counter(step); display:block; font-size:28px; font-weight:700;
+              letter-spacing:-.02em; margin-bottom:8px; background:linear-gradient(90deg,var(--accent-2),var(--teal));
+              -webkit-background-clip:text; background-clip:text; color:transparent; }
+ol.steps h3 { margin:0 0 4px; font-size:17px; }
+ol.steps p { margin:0; color:var(--muted); font-size:15px; }
+.cta-row { margin-top:32px; }
+
+.faq details { max-width:820px; }
 details { background:var(--surface); border:1px solid var(--line); border-radius:12px;
-          padding:14px 18px; margin-bottom:10px; }
-summary { cursor:pointer; font-weight:600; }
+          padding:16px 20px; margin-bottom:10px; transition:border-color .2s; }
+details[open], details:hover { border-color:#7c6dfa66; }
+summary { cursor:pointer; font-weight:600; list-style:none; display:flex; justify-content:space-between; gap:16px; }
+summary::-webkit-details-marker { display:none; }
+summary::after { content:"+"; color:var(--accent-2); font-weight:400; font-size:20px; line-height:1; }
+details[open] summary::after { content:"\\2212"; }
 details p { color:var(--muted); margin:10px 0 0; }
-.transcript p { margin:0 0 10px; }
-footer.site { border-top:1px solid var(--line); padding:32px 0 48px; color:var(--muted);
-              font-size:14px; }
-footer.site .wrap { display:flex; gap:24px; flex-wrap:wrap; justify-content:space-between; }
+.transcript { color:var(--soft); }
+.transcript p { margin:0 0 10px; max-width:75ch; }
+
+.closing { text-align:center; }
+.closing .section-lead { margin-left:auto; margin-right:auto; }
+.closing .actions { justify-content:center; }
+
+footer.site { border-top:1px solid var(--line); padding:36px 0 52px; color:var(--muted); font-size:14px; }
+footer.site .wrap { display:flex; gap:24px; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; }
+footer.site p { margin:10px 0 0; max-width:46ch; }
 footer.site nav { display:flex; gap:18px; flex-wrap:wrap; }
-footer.site a { color:var(--muted); }
-@media (max-width:640px) { nav.primary { margin-left:0; width:100%; gap:14px; padding-bottom:10px; } }
+footer.site a { color:var(--muted); text-decoration:none; }
+footer.site a:hover { color:var(--accent-2); }
+
+@media (max-width:1000px) { .hero-grid { grid-template-columns:1fr; gap:44px; } .tiles-note { text-align:left; } }
+@media (max-width:640px) {
+  nav.primary .nav-link { display:none; }
+  .hero { padding:44px 0 48px; }
+  .hero-glow { width:280px; height:280px; top:-40px; left:-40px; }
+  .tiles { gap:8px; } .tile { min-height:104px; padding:12px 6px; } .tile b { font-size:24px; }
+  section { padding:60px 0; }
+}
+@media (prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto; }
+  *, ::before, ::after { animation:none !important; transition:none !important; }
+}
 """
 
 
@@ -271,8 +429,14 @@ def _e(text: str) -> str:
 @cache
 def home_page() -> str:
     url = site_url()
+    tiles = "\n".join(
+        f'<li class="tile">{_icon(icon)}<b class="grad">{_e(value)}</b><span>{_e(caption)}</span></li>'
+        for icon, value, caption in stat_tiles()
+    )
+    stack = "".join(f"<li>{_e(item)}</li>" for item in STACK)
     features = "\n".join(
-        f'<article class="card"><h3>{_e(t)}</h3><p>{_e(d)}</p></article>' for t, d in FEATURES
+        f'<article class="card"><span class="num">{i:02d}</span><h3>{_e(t)}</h3><p>{_e(d)}</p></article>'
+        for i, (t, d) in enumerate(FEATURES, 1)
     )
     steps = "\n".join(f"<li><h3>{_e(t)}</h3><p>{_e(d)}</p></li>" for t, d in STEPS)
     faq = "\n".join(f"<details><summary>{_e(q)}</summary><p>{_e(a)}</p></details>" for q, a in FAQ)
@@ -288,7 +452,8 @@ def home_page() -> str:
 <meta name="robots" content="index, follow, max-image-preview:large, max-video-preview:-1">
 <link rel="canonical" href="{url}/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#080c1a">
+<meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{NAME}">
 <meta property="og:title" content="{_e(TITLE)}">
@@ -314,39 +479,68 @@ def home_page() -> str:
 <a class="skip" href="#main">Skip to content</a>
 <header class="site">
   <div class="wrap">
-    <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=32)}<span>VeroniQA</span></a>
+    <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=28)}<span>VeroniQA</span></a>
     <nav class="primary" aria-label="Main">
-      <a href="#features">Features</a>
-      <a href="#how-it-works">How it works</a>
-      <a href="#faq">FAQ</a>
-      <a href="{REPO_URL}" rel="noopener">GitHub</a>
-      <a class="btn primary" href="/talk/">Talk to VeroniQA</a>
+      <a class="nav-link" href="#watch">Watch</a>
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how-it-works">How it works</a>
+      <a class="nav-link" href="#faq">FAQ</a>
+      <a class="nav-link" href="{REPO_URL}" rel="noopener">GitHub</a>
+      <a class="pill-btn" href="/talk/">Talk to VeroniQA</a>
     </nav>
   </div>
 </header>
 <main id="main">
-  <div class="wrap hero">
-    <p class="eyebrow">Built on AgentQA</p>
-    <h1>VeroniQA, the AI assistant for API testing</h1>
-    <p class="lead">Give her your requirements, documents and links. She answers with sources,
-    runs the tests and explains what she found.</p>
-    <div class="actions">
-      <a class="btn primary" href="/talk/">Talk to VeroniQA</a>
-      <a class="btn" href="#transcript">Read the transcript</a>
+  <div class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="wrap hero-grid">
+      <div>
+        <p class="status">Live demo · no sign-up, no API keys</p>
+        <h1>VeroniQA</h1>
+        <p class="tagline grad">The AI assistant for API testing, built on AgentQA</p>
+        <p class="lead">Give her your requirements, documents and API docs. She answers with sources,
+        writes and runs the tests, and explains every failure with evidence.</p>
+        <div class="actions">
+          <a class="btn primary" href="/talk/">{_icon("chat", 18)} Talk to VeroniQA</a>
+          <a class="btn" href="#watch">{_icon("play", 16)} Watch the intro</a>
+        </div>
+      </div>
+      <div>
+        <ul class="tiles" aria-label="Measured results">
+{tiles}
+        </ul>
+        <p class="tiles-note">Measured on the simulated benchmark in the repository.</p>
+      </div>
     </div>
-    <figure class="video">
-      <video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg" controls
-        preload="metadata" playsinline aria-label="Meet VeroniQA, an 85-second introduction"></video>
-      <figcaption>Meet VeroniQA in 85 seconds. Captions are built in; the
-      <a href="#transcript">transcript</a> is below.</figcaption>
-    </figure>
   </div>
+  <div class="wrap">
+    <div class="marquee" aria-label="Built with">
+      <ul class="marquee-track">{stack}<li aria-hidden="true">{'</li><li aria-hidden="true">'.join(_e(s) for s in STACK)}</li></ul>
+    </div>
+  </div>
+
+  <section id="watch" aria-labelledby="watch-title">
+    <div class="wrap">
+      <p class="eyebrow">Watch</p>
+      <h2 id="watch-title">Meet VeroniQA <span class="grad">in 85 seconds</span></h2>
+      <p class="section-lead">Knowledge in, cited answers out, safe links, and a full test run from
+      one chat message.</p>
+      <figure class="video">
+        <div class="frame">
+          <video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg" controls
+            preload="metadata" playsinline aria-label="Meet VeroniQA, an 85-second introduction"></video>
+        </div>
+        <figcaption>Captions are built in; the <a href="#transcript">transcript</a> is below.</figcaption>
+      </figure>
+    </div>
+  </section>
 
   <section id="features" aria-labelledby="features-title">
     <div class="wrap">
-      <h2 id="features-title">What VeroniQA does</h2>
-      <p class="section-lead">One place for an API's requirements, questions and test runs,
-      on top of an engine that is observable, guarded and measured.</p>
+      <p class="eyebrow">Features</p>
+      <h2 id="features-title">API testing, <span class="grad">AI-augmented</span></h2>
+      <p class="section-lead">One place for an API's requirements, questions and test runs, on top of
+      an engine that is observable, guarded and measured.</p>
       <div class="grid">
 {features}
       </div>
@@ -355,18 +549,20 @@ def home_page() -> str:
 
   <section id="how-it-works" aria-labelledby="how-title">
     <div class="wrap">
-      <h2 id="how-title">How it works</h2>
-      <p class="section-lead">The demo starts you with a sample Orders API that has planted
-      bugs, so you can try every step right away.</p>
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">From documents to findings <span class="grad">in three steps</span></h2>
+      <p class="section-lead">The demo starts you with a sample Orders API that has planted bugs, so
+      you can try every step right away.</p>
       <ol class="steps">
 {steps}
       </ol>
-      <p class="actions" style="margin-top:28px"><a class="btn primary" href="/talk/">Try it now</a></p>
+      <p class="cta-row"><a class="btn primary" href="/talk/">{_icon("chat", 18)} Try it now</a></p>
     </div>
   </section>
 
   <section id="faq" aria-labelledby="faq-title">
-    <div class="wrap">
+    <div class="wrap faq">
+      <p class="eyebrow">FAQ</p>
       <h2 id="faq-title">Questions</h2>
 {faq}
     </div>
@@ -374,16 +570,30 @@ def home_page() -> str:
 
   <section id="transcript" aria-labelledby="transcript-title">
     <div class="wrap transcript">
+      <p class="eyebrow">Transcript</p>
       <h2 id="transcript-title">Video transcript</h2>
 {words}
+    </div>
+  </section>
+
+  <section class="closing" aria-labelledby="closing-title">
+    <div class="wrap">
+      <h2 id="closing-title">Ready to <span class="grad">try it?</span></h2>
+      <p class="section-lead">Your own private workspace, preloaded with the demo API. Nothing to
+      install and nothing to pay.</p>
+      <div class="actions">
+        <a class="btn primary" href="/talk/">{_icon("chat", 18)} Talk to VeroniQA</a>
+        <a class="btn" href="{REPO_URL}" rel="noopener">{_icon("github", 18)} Source on GitHub</a>
+      </div>
     </div>
   </section>
 </main>
 <footer class="site">
   <div class="wrap">
     <div>
-      <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=24)}<span>VeroniQA</span></a>
-      <p>A proof of concept built on AgentQA. The public demo uses simulated models.</p>
+      <a class="brand" href="/" aria-label="VeroniQA home">{LOGO.format(size=22)}<span>VeroniQA</span></a>
+      <p>A proof of concept built on AgentQA. The public demo uses simulated models. Built by
+      <a href="https://www.rowan-kendal.com/" rel="noopener">Rowan Kendal</a>.</p>
     </div>
     <nav aria-label="Footer">
       <a href="/">Home</a>
