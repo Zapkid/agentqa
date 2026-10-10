@@ -4,7 +4,7 @@ The public demo is VeroniQA on its own URL (<https://veroniqa.vercel.app>):
 
 | path | what |
 |---|---|
-| `/` | the home page: header and footer, the narrated introduction video (captions burned in), features, how it works, the technology behind it and the FAQ |
+| `/` | the home page: header and footer, the narrated introduction video (captions burned in), features, how it works, usage and cost charts, the technology behind it and the FAQ |
 | `/talk/` | the VeroniQA app (Streamlit): chat, knowledge, test runs |
 | `/videos/veroniqa-intro.mp4` | the video itself, served with range requests so it streams and seeks |
 | `/robots.txt`, `/sitemap.xml`, `/llms.txt` | for search engines and AI assistants (see below) |
@@ -38,6 +38,9 @@ repository (the subtitles, the video length), so they carry no claims the repo c
   thumbnail and the full transcript) and `FAQPage`.
 - The video transcript in the structured data and in `llms.txt` (the page itself shows the video
   with burned-in captions).
+- The usage and cost charts (cost per run by strategy, tokens by stage, repeat runs with memory) are
+  plain HTML and CSS bars with a table view each, in `charts.py`; a test recomputes every number
+  from the latest `results/*.json`.
 - The hero's six result tiles (bugs found, relative cost, performance defects caught and so on) are
   checked against the latest `results/*.json` by a test, like the README's Results section.
 - `robots.txt` explicitly allows the major search and AI crawlers (GPTBot, OAI-SearchBot,

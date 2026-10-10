@@ -16,6 +16,8 @@ from datetime import UTC, datetime, timedelta
 from functools import cache
 from pathlib import Path
 
+from agentqa.veroniqa import charts
+
 ROOT = Path(__file__).resolve().parents[2]
 INTRO = ROOT / "media/videos/veroniqa-intro.mp4"
 SUBTITLES = INTRO.with_suffix(".srt")
@@ -532,6 +534,7 @@ def _header() -> str:
       <a class="nav-link" href="/#watch">Watch</a>
       <a class="nav-link" href="/#features">Features</a>
       <a class="nav-link" href="/#how-it-works">How it works</a>
+      <a class="nav-link" href="/#results">Results</a>
       <a class="nav-link" href="/#technology">Technology</a>
       <a class="nav-link" href="/#faq">FAQ</a>
       <a class="nav-link" href="/developers">Developers</a>
@@ -677,7 +680,7 @@ def home_page() -> str:
 <meta name="application-name" content="{NAME}">
 <meta property="og:locale" content="en_US">
 <script type="application/ld+json">{ld}</script>
-<style>{STYLE}</style>
+<style>{STYLE}{charts.CSS}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -748,6 +751,19 @@ def home_page() -> str:
 {steps}
       </ol>
       <p class="cta-row"><a class="btn primary" href="/talk/">{_icon("chat", 18)} Try it now</a></p>
+    </div>
+  </section>
+
+  <section id="results" aria-labelledby="results-title">
+    <div class="wrap">
+      <p class="eyebrow">Results</p>
+      <h2 id="results-title">Usage and cost, <span class="grad">measured</span></h2>
+      <p class="section-lead">Four ways to run the same test job against the demo API, three runs
+      each. Costs are what the tokens would cost at each model's list price.</p>
+{charts.charts_html()}
+      <p class="charts-note">Measured on the simulated benchmark in the repository (models with
+      declared error rates, ADR 0003); full tables in
+      <a href="{REPO_URL}/blob/main/RESULTS.md" rel="noopener">RESULTS.md</a>.</p>
     </div>
   </section>
 
@@ -970,6 +986,12 @@ Measured on the simulated benchmark in the repository:
 
 {steps}
 
+## Usage and cost
+
+Four ways to run the same test job against the demo API, three runs each, on the simulated
+benchmark. Costs are what the tokens would cost at each model's list price.
+
+{charts.charts_markdown()}
 ## Technology
 
 {tech}
