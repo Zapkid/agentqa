@@ -120,7 +120,7 @@ def test_home_page_is_a_full_page_with_seo_metadata() -> None:
         'name="twitter:card"',
         'name="description"',
         'href="/talk/"',
-        'id="transcript"',
+        'id="technology"',
     ):
         assert part in page, part
     assert page.count("<h1") == 1
@@ -299,3 +299,20 @@ def test_prefers_markdown(accept: str, markdown: bool) -> None:
     from agentqa.veroniqa import site
 
     assert site.prefers_markdown(accept) is markdown
+
+
+def test_home_page_shows_the_technology_but_not_the_transcript() -> None:
+    from agentqa.veroniqa import site
+
+    page, md = site.home_page(), site.home_markdown()
+    line = site.transcript()[1]
+    assert line not in page.split('application/ld+json">')[1].split("</script>", 1)[1]
+    assert line not in md and "## Video transcript" not in md
+    assert 'id="transcript"' not in page and 'href="/#technology"' in page
+    for title, _, tools in site.TECH:
+        assert f"<h3>{site._e(title)}</h3>" in page and f"### {title}" in md
+        assert all(f"<li>{site._e(tool)}</li>" in page for tool in tools)
+    graph = json.loads(page.split('application/ld+json">')[1].split("</script>")[0])["@graph"]
+    video = next(n for n in graph if n["@type"] == "VideoObject")
+    assert line in video["transcript"]  # still in the structured data and llms.txt for search
+    assert line in site.llms_txt()
