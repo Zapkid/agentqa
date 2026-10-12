@@ -103,6 +103,26 @@ start. This is a demo, not a place to keep work.
 
 The image runs as an unprivileged user, listens on `$PORT` and writes only under `/tmp`.
 
+## Keeping Vercel's image storage small
+
+Vercel stores the container image of every deployment (each push to `main` and each branch
+preview), so storage grows by one image per push until old deployments expire or are removed.
+Two things keep it down:
+
+- **A small image.** `Dockerfile.vercel` builds in two stages, so uv, its download cache (as big
+  as the environment, about 830 MB) and the build layers are not shipped, and it uninstalls the
+  packages the website never uses: locust and matplotlib (only `agentqa perf` and `agentqa eval`
+  use them), and kubernetes and onnxruntime (Chroma dependencies for its distributed server and
+  default embedding model; VeroniQA embeds locally). That took the image from about 2.1 GB to
+  about 0.9 GB. The build ends with `import agentqa.veroniqa.server`, so if the app ever starts
+  needing one of those packages the build fails instead of the deployment. Compiled bytecode
+  (141 MB) is kept for faster cold starts; set `UV_COMPILE_BYTECODE=0` to trade that for size.
+- **Expiring old deployments.** In the Vercel dashboard, **Settings → Security → Deployment
+  Retention**, set short retention for preview, canceled and errored deployments (production is
+  kept as the rollback target). Existing old deployments can be removed with
+  `vercel remove <deployment-url>` or from the project's Deployments page; the images are freed
+  with them. The tooling in this repository cannot do either, they need your Vercel account.
+
 ## Run the same thing locally
 
 ```bash

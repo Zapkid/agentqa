@@ -1,13 +1,21 @@
-# VeroniQA public demo on Vercel (container image function). One ASGI app serves the Streamlit
-# UI at /, the watch page at /watch and the videos at /videos (agentqa/veroniqa/server.py).
-# Hosted mode: per-visitor temporary workspaces, simulated models (no API keys on the server),
-# test runs only against the bundled Orders API. See docs/DEPLOY.md.
-FROM python:3.12-slim-bookworm
+# VeroniQA public demo on Vercel (container image function). One ASGI app serves the home page,
+# the public API, the developer portal and the Streamlit UI at /talk/
+# (agentqa/veroniqa/server.py). Hosted mode: per-visitor temporary workspaces, simulated models
+# (no API keys on the server), test runs only against the bundled Orders API. See docs/DEPLOY.md.
+#
+# Vercel stores every deployment's image, so size matters twice: two stages keep uv, its download
+# cache (as large as the environment itself) and the build layers out of the image that ships, and
+# the packages that only the command line uses (load testing, charts) or that Chroma needs only
+# for its server mode are removed from the environment. Together that takes the image from about
+# 2.1 GB to under 1 GB.
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
+# ---- build: install the locked dependencies, then trim them
+FROM python:3.12-slim-bookworm AS build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    UV_NO_CACHE=1 \
     UV_PYTHON_DOWNLOADS=never
 
 RUN pip install --no-cache-dir uv==0.11.32
@@ -26,6 +34,25 @@ COPY prompts ./prompts
 COPY .streamlit ./.streamlit
 COPY media/videos/veroniqa-intro.mp4 media/videos/veroniqa-intro.jpg media/videos/veroniqa-intro.srt ./media/videos/
 RUN uv sync --locked --no-dev
+
+# Not used by the website: locust and matplotlib serve `agentqa perf` and `agentqa eval` only
+# (hosted mode never runs either), and kubernetes and onnxruntime are Chroma dependencies for its
+# distributed server and default embedding model, while VeroniQA embeds with its own local hashing.
+# The smoke test fails the build, instead of the deploy, if the app ever starts needing one.
+RUN uv pip uninstall --python /app/.venv/bin/python \
+        locust gevent geventhttpclient pyzmq flask flask-cors flask-login \
+        matplotlib contourpy kiwisolver cycler fonttools \
+        kubernetes onnxruntime \
+    && /app/.venv/bin/python -c "import agentqa.veroniqa.server"
+
+# ---- run: the base image plus the finished /app, nothing else
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+COPY --from=build /app /app
 
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin veroniqa
 USER 10001
