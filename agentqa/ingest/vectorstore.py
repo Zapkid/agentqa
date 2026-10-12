@@ -6,9 +6,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-import chromadb
-from chromadb.config import Settings
-
 from agentqa.ingest.embed import Embedder, default_embedder
 from agentqa.ingest.lexical import BM25, interleave
 from agentqa.models import Chunk
@@ -21,6 +18,11 @@ class VectorStore:
         collection: str = "agentqa-chunks",
         embedder: Embedder | None = None,
     ) -> None:
+        # Imported here, not at module level: Chroma costs about a second of CPU to import, and
+        # the website's pages, API status and health checks never open a store.
+        import chromadb
+        from chromadb.config import Settings
+
         settings = Settings(anonymized_telemetry=False)
         self.client = (
             chromadb.PersistentClient(path=str(path), settings=settings)

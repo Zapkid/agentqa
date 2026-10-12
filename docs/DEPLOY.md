@@ -123,6 +123,35 @@ Two things keep it down:
   `vercel remove <deployment-url>` or from the project's Deployments page; the images are freed
   with them. The tooling in this repository cannot do either, they need your Vercel account.
 
+## Keeping Fluid function CPU low
+
+Vercel bills the function's *Active CPU* time. What drove it, and what is done about it:
+
+- **An open tab reconnected forever.** Vercel closes a WebSocket when its function reaches the
+  plan's maximum duration (5 minutes on Hobby), and Streamlit's page reconnects by itself: it
+  fetches `/_stcore/health` and `/_stcore/host-config` at once (so two cold instances start),
+  opens a new WebSocket and runs a new session. A tab left open in the background did that every
+  5 minutes, for as long as it stayed open, which on a free plan's CPU allowance adds up to weeks
+  of CPU. `idle_guard.py` is a small script in the `/talk/` page: when the connection drops while
+  the tab is hidden, or untouched for 2 minutes, it holds back Streamlit's retry requests and
+  shows a one-line notice; the first click, key press, scroll, touch or return to the tab reloads
+  the page for a fresh session. Someone actually using the app reconnects as before.
+- **Cold starts imported Chroma (about 1.1 of 1.8 CPU-seconds)** even for requests that never use
+  it (pages, API status, health checks). It is now imported when the first vector store opens, so
+  a cold start for those requests costs about 0.85 s instead of 1.8 s.
+- **Every request woke the function.** Vercel's CDN caches a function's response only when it
+  carries `s-maxage` (plain `max-age` is for browsers). Pages, Markdown twins, `robots.txt`,
+  `sitemap.xml`, `llms.txt`, the OpenAPI files, the API catalog and `/404`s now send it (1 hour;
+  a day for the video, the poster and Streamlit's hashed assets, about 70 files for a first
+  visit). Not cached: the API (its rate-limit headers are per client), the `/talk/` shell and
+  anything with a cookie. A change can take up to an hour to reach a cached page.
+- **Streamlit's source-file watcher** is switched off in hosted mode (it starts per session in
+  development to reload on save; a container's files never change): about a third less CPU per
+  new session.
+
+To check the effect, watch Active CPU under the project's Observability tab; on Hobby, runtime
+logs are kept for one hour only. A cold start shows as `Started server process` in the logs.
+
 ## Run the same thing locally
 
 ```bash

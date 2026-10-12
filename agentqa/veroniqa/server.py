@@ -34,7 +34,7 @@ from starlette.responses import (
 from starlette.routing import Mount, Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from agentqa.veroniqa import devportal, public_api, site
+from agentqa.veroniqa import devportal, hosted, idle_guard, public_api, site
 
 APP = Path(__file__).with_name("app.py")
 INTRO = site.INTRO  # captions are burned in
@@ -43,9 +43,16 @@ TALK = "talk"  # Streamlit's base path: the app, its assets and its WebSocket li
 
 # Must be set before st.App builds its routes. Plain `streamlit run` (make veroniqa) is unaffected.
 st.config.set_option("server.baseUrlPath", TALK)
+if hosted.hosted():
+    # The container's files never change, so the source-file watcher that Streamlit starts for
+    # every browser session (a development feature) would only cost CPU.
+    st.config.set_option("server.fileWatcherType", "none")
 
 # The first path segments Streamlit serves under /talk/. Anything else would get the app shell
 # with a 200 (a "soft 404"), so the middleware answers it with a real 404 instead.
+# Streamlit's hashed JavaScript, CSS and font files (about 70 requests for a first visit) never change
+# for a given build, so the CDN may keep them instead of waking the function for each one.
+STATIC_SEGMENTS = frozenset({"static", "favicon.png", "manifest.json"})
 STREAMLIT_SEGMENTS = frozenset(
     {"", "favicon.png", "manifest.json", "static", "_stcore", "media", "component", "auth", "app"}
 )
@@ -58,8 +65,19 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
 }
-PAGE = {**SECURITY_HEADERS, "Cache-Control": "public, max-age=300", "Vary": "Accept"}
-CACHE = {"Cache-Control": "public, max-age=86400"}
+# Vercel's CDN caches a function's response only when it carries `s-maxage` (plain `max-age` is for
+# browsers), and a CDN hit costs no function CPU at all. Everything below is the same for every
+# visitor and changes only with a deployment, so it is cacheable; pages vary on `Accept` (HTML or
+# Markdown) and Vercel honours that when `s-maxage` is present. Not cached: the API (it reports
+# per-client rate limits), the /talk/ app shell and anything with a cookie.
+PAGE = {
+    **SECURITY_HEADERS,
+    "Cache-Control": "public, max-age=300, s-maxage=3600",
+    "Vary": "Accept",
+}
+MISSING = {**PAGE, "Cache-Control": "public, max-age=60, s-maxage=600"}  # 404s from scanners
+CACHE = {"Cache-Control": "public, max-age=86400, s-maxage=3600"}
+MEDIA = {"Cache-Control": "public, max-age=86400, s-maxage=86400"}  # video, poster, hashed assets
 MARKDOWN = "text/markdown; charset=utf-8"
 # RFC 9727 section 4.1: the catalog is a linkset with this profile.
 API_CATALOG = 'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
@@ -79,7 +97,7 @@ def _negotiated(
     link = f'<{md_path}>; rel="alternate"; type="text/markdown"'
     if status == 200:
         link = f"{link}, {API_LINKS}"
-    headers = {**PAGE, "Link": link}
+    headers = {**(PAGE if status == 200 else MISSING), "Link": link}
     if site.prefers_markdown(request.headers.get("accept", "")):
         return Response(markdown, status_code=status, media_type=MARKDOWN, headers=headers)
     return HTMLResponse(html, status_code=status, headers=headers)
@@ -173,11 +191,11 @@ async def to_talk(request: Request) -> Response:
 
 
 async def intro(request: Request) -> Response:
-    return FileResponse(INTRO, media_type="video/mp4", headers=CACHE)
+    return FileResponse(INTRO, media_type="video/mp4", headers=MEDIA)
 
 
 async def poster(request: Request) -> Response:
-    return FileResponse(POSTER, media_type="image/jpeg", headers=CACHE)
+    return FileResponse(POSTER, media_type="image/jpeg", headers=MEDIA)
 
 
 def not_found_response(request: Request) -> Response:
@@ -189,6 +207,19 @@ def not_found_response(request: Request) -> Response:
 
 async def not_found(request: Request, exc: Exception) -> Response:
     return not_found_response(request)
+
+
+def _edge_cached(send: Send) -> Send:
+    """Wrap `send` so a successful response is cacheable by the CDN (see MEDIA)."""
+
+    async def wrapped(message: Message) -> None:
+        if message["type"] == "http.response.start" and message["status"] == 200:
+            kept = [(k, v) for k, v in message["headers"] if k.lower() != b"cache-control"]
+            kept.append((b"cache-control", MEDIA["Cache-Control"].encode()))
+            message = {**message, "headers": kept}
+        await send(message)
+
+    return wrapped
 
 
 class AgentFriendlyTalk:
@@ -208,6 +239,9 @@ class AgentFriendlyTalk:
         segment = path[len(TALK) + 2 :].split("/", 1)[0]
         if segment not in STREAMLIT_SEGMENTS:
             await not_found_response(request)(scope, receive, send)
+            return
+        if segment in STATIC_SEGMENTS and scope["method"] in ("GET", "HEAD"):
+            await self.app(scope, receive, _edge_cached(send))
             return
         if path != f"/{TALK}/" or scope["method"] not in ("GET", "HEAD"):
             await self.app(scope, receive, send)
@@ -269,6 +303,7 @@ def enrich_shell(page: str) -> str:
         f'<meta name="description" content="{description}">'
         f'<link rel="canonical" href="{site.site_url()}/{TALK}/">'
         f'<link rel="alternate" type="text/markdown" href="/{TALK}/">'
+        f"<script>{idle_guard.SCRIPT}</script>"
     )
     noscript = (
         "<noscript><main><h1>Talk to VeroniQA</h1>"
