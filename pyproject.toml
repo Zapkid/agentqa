@@ -7,7 +7,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   # Floors are the versions this project is tested with (see uv.lock); caps stop a silent major
   # (or, for 0.x packages, minor) upgrade. Dependabot proposes bumps; CI installs with --locked.
-  "pydantic>=2.13,<3",
+  "pydantic>=2.14.1,<3",
   "pyyaml>=6.0,<7",
   "httpx>=0.28,<0.29",
   "fastapi>=0.142,<0.143",
