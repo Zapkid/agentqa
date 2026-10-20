@@ -11,7 +11,7 @@ import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, PlainTextResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
@@ -36,6 +36,16 @@ def _client() -> TestClient:
     async def asset(request: Request) -> Response:  # what Streamlit sends for a hashed file
         return PlainTextResponse("x", headers={"Cache-Control": "public, max-age=31536000"})
 
+    async def health(
+        request: Request,
+    ) -> Response:  # Streamlit gives each visitor an XSRF cookie here
+        return PlainTextResponse(
+            "ok", headers={"Cache-Control": "no-cache", "Set-Cookie": "_streamlit_xsrf=abc; Path=/"}
+        )
+
+    async def host_config(request: Request) -> Response:
+        return JSONResponse({"allowedOrigins": []}, headers={"Cache-Control": "no-cache"})
+
     async def missing(request: Request) -> Response:
         return PlainTextResponse("no", status_code=404)
 
@@ -44,7 +54,8 @@ def _client() -> TestClient:
         Route("/talk/", talk),
         Route("/talk/static/js/index.abc123.js", asset, methods=["GET", "HEAD", "POST"]),
         Route("/talk/static/js/gone.js", missing),
-        Route("/talk/_stcore/health", asset),
+        Route("/talk/_stcore/health", health),
+        Route("/talk/_stcore/host-config", host_config),
     ]
     return TestClient(
         Starlette(
@@ -126,9 +137,36 @@ def test_streamlit_assets_are_cacheable_but_errors_and_other_calls_are_not() -> 
     assert _edge_seconds(client.post("/talk/static/js/index.abc123.js").headers) is None
     gone = client.get("/talk/static/js/gone.js")
     assert gone.status_code == 404 and _edge_seconds(gone.headers) is None
-    # the app's own endpoints (health, host config, the WebSocket) are never cached
-    assert _edge_seconds(client.get("/talk/_stcore/health").headers) is None
-    assert _edge_seconds(client.get("/talk/", headers={"Accept": "text/html"}).headers) is None
+
+
+def test_host_config_is_cacheable_but_the_health_check_never_is() -> None:
+    client = _client()
+    config = client.get("/talk/_stcore/host-config")
+    assert config.status_code == 200 and _edge_seconds(config.headers) == 3600
+    assert "set-cookie" not in config.headers
+    # /_stcore/health hands each visitor their own XSRF cookie: caching it would share that cookie
+    health = client.get("/talk/_stcore/health")
+    assert (
+        _edge_seconds(health.headers) is None and "_streamlit_xsrf" in health.headers["set-cookie"]
+    )
+    assert health.headers["cache-control"] == "no-cache"
+
+
+def test_a_response_that_sets_a_cookie_is_never_made_cacheable() -> None:
+    sent: list[dict] = []
+
+    async def collect(message: dict) -> None:
+        sent.append(message)
+
+    import asyncio
+
+    start = {
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [(b"set-cookie", b"a=b"), (b"cache-control", b"no-cache")],
+    }
+    asyncio.run(server._edge_cached(collect, "public, s-maxage=60")(start))
+    assert dict(sent[0]["headers"])[b"cache-control"] == b"no-cache"  # untouched
 
 
 def test_chroma_is_not_loaded_until_a_store_is_opened() -> None:
@@ -167,3 +205,27 @@ def test_idle_guard_only_pauses_streamlits_own_requests_when_away() -> None:
         assert event in js
     assert "window.location.reload()" in js
     assert "role', 'status'" in js and "id = 'vq-paused'" in js  # a visible, accessible notice
+
+
+def test_the_app_shell_is_cacheable_in_both_forms_but_not_when_it_sets_a_cookie() -> None:
+    client = _client()
+    for accept in ("text/html", "text/markdown"):
+        r = client.get("/talk/", headers={"Accept": accept})
+        assert r.status_code == 200 and _edge_seconds(r.headers) == 3600, accept
+        assert r.headers["vary"] == "Accept" and "set-cookie" not in r.headers
+    assert _edge_seconds(client.head("/talk/").headers) == 3600
+    # if Streamlit ever put a per-visitor cookie on the shell, it must not be shared
+    cookie = _client_with_shell_cookie().get("/talk/", headers={"Accept": "text/html"})
+    assert _edge_seconds(cookie.headers) is None and "set-cookie" in cookie.headers
+
+
+def _client_with_shell_cookie() -> TestClient:
+    async def talk(request: Request) -> Response:
+        return HTMLResponse(
+            "<!doctype html><html><head><title>S</title></head><body></body></html>",
+            headers={"Set-Cookie": "visitor=1; Path=/"},
+        )
+
+    return TestClient(
+        Starlette(routes=[Route("/talk/", talk)], middleware=[Middleware(server.AgentFriendlyTalk)])
+    )

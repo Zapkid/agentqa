@@ -123,7 +123,7 @@ Two things keep it down:
   `vercel remove <deployment-url>` or from the project's Deployments page; the images are freed
   with them. The tooling in this repository cannot do either, they need your Vercel account.
 
-## Keeping Fluid function CPU low
+## Keeping Fluid function CPU and memory low
 
 Vercel bills the function's *Active CPU* time. What drove it, and what is done about it:
 
@@ -143,11 +143,28 @@ Vercel bills the function's *Active CPU* time. What drove it, and what is done a
   carries `s-maxage` (plain `max-age` is for browsers). Pages, Markdown twins, `robots.txt`,
   `sitemap.xml`, `llms.txt`, the OpenAPI files, the API catalog and `/404`s now send it (1 hour;
   a day for the video, the poster and Streamlit's hashed assets, about 70 files for a first
-  visit). Not cached: the API (its rate-limit headers are per client), the `/talk/` shell and
-  anything with a cookie. A change can take up to an hour to reach a cached page.
+  visit). The `/talk/` app page and `/talk/_stcore/host-config` are cacheable too. Not cached:
+  the API (its rate-limit headers are per client), `/talk/_stcore/health` and anything else that
+  sets a cookie. A change can take up to an hour to reach a cached page.
+- **Two cold instances per visit became one.** Streamlit's page requests `/_stcore/health` and
+  `/_stcore/host-config` at the same moment, and when no instance is warm each request starts its
+  own. `host-config` is the same JSON for every visitor and sets no cookie, so the CDN now answers
+  it. `health` is deliberately not cached: it hands each visitor their own XSRF cookie, and a
+  cached copy would share one visitor's cookie with everyone (the cache helper also refuses to
+  touch any response that sets a cookie).
 - **Streamlit's source-file watcher** is switched off in hosted mode (it starts per session in
   development to reload on save; a container's files never change): about a third less CPU per
   new session.
+
+**Provisioned memory** (360 GB-hours a month on the free tier) is metered over how long an
+instance exists, not how much it computes. Measured on production: one tiny request starts an
+instance that stays until about 5 minutes after its last request (04:24:50 start, 04:29:55
+shutdown), and an open WebSocket keeps it for the whole connection. So memory is spent by (1) how
+many cold starts there are and (2) anything that touches the function more often than every 5
+minutes, which keeps one instance alive around the clock (2 GB x 24 h = 48 GB-hours a day). The
+caching above attacks both: repeat requests, crawlers and uptime checks are answered by the CDN for
+an hour, and a visit starts one instance instead of two or three. The memory size itself is not
+configurable on the free tier.
 
 To check the effect, watch Active CPU under the project's Observability tab; on Hobby, runtime
 logs are kept for one hour only. A cold start shows as `Started server process` in the logs.

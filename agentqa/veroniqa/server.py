@@ -48,11 +48,16 @@ if hosted.hosted():
     # every browser session (a development feature) would only cost CPU.
     st.config.set_option("server.fileWatcherType", "none")
 
-# The first path segments Streamlit serves under /talk/. Anything else would get the app shell
-# with a 200 (a "soft 404"), so the middleware answers it with a real 404 instead.
 # Streamlit's hashed JavaScript, CSS and font files (about 70 requests for a first visit) never change
 # for a given build, so the CDN may keep them instead of waking the function for each one.
 STATIC_SEGMENTS = frozenset({"static", "favicon.png", "manifest.json"})
+# The page asks for /_stcore/host-config on every connect, at the same moment as /_stcore/health. It
+# is the same JSON for every visitor and sets no cookie, so the CDN may answer it, which leaves one
+# request (not two) to start a cold instance. /_stcore/health is NOT cached: it hands each visitor
+# their own XSRF cookie.
+HOST_CONFIG = f"/{TALK}/_stcore/host-config"
+# The first path segments Streamlit serves under /talk/. Anything else would get the app shell
+# with a 200 (a "soft 404"), so the middleware answers it with a real 404 instead.
 STREAMLIT_SEGMENTS = frozenset(
     {"", "favicon.png", "manifest.json", "static", "_stcore", "media", "component", "auth", "app"}
 )
@@ -69,7 +74,10 @@ SECURITY_HEADERS = {
 # browsers), and a CDN hit costs no function CPU at all. Everything below is the same for every
 # visitor and changes only with a deployment, so it is cacheable; pages vary on `Accept` (HTML or
 # Markdown) and Vercel honours that when `s-maxage` is present. Not cached: the API (it reports
-# per-client rate limits), the /talk/ app shell and anything with a cookie.
+# per-client rate limits), /talk/_stcore/health (it sets a per-visitor cookie) and anything else
+# that sets a cookie. An hour matters beyond saving CPU: an instance stays alive for about 5 minutes
+# after its last request, so anything that polls the function more often than that (a crawler, an
+# uptime check) keeps one instance running, and provisioned memory billed, around the clock.
 PAGE = {
     **SECURITY_HEADERS,
     "Cache-Control": "public, max-age=300, s-maxage=3600",
@@ -209,14 +217,21 @@ async def not_found(request: Request, exc: Exception) -> Response:
     return not_found_response(request)
 
 
-def _edge_cached(send: Send) -> Send:
-    """Wrap `send` so a successful response is cacheable by the CDN (see MEDIA)."""
+def _with_cache_control(headers: list[Any], cache_control: str) -> list[Any]:
+    """The headers with `Cache-Control` replaced, so the CDN may keep the response. A response that
+    sets a cookie is returned unchanged: it is per visitor and must never be shared."""
+    if any(k.lower() == b"set-cookie" for k, _ in headers):
+        return list(headers)
+    kept = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
+    return [*kept, (b"cache-control", cache_control.encode())]
+
+
+def _edge_cached(send: Send, cache_control: str) -> Send:
+    """Wrap `send` so a successful response is cacheable by the CDN."""
 
     async def wrapped(message: Message) -> None:
         if message["type"] == "http.response.start" and message["status"] == 200:
-            kept = [(k, v) for k, v in message["headers"] if k.lower() != b"cache-control"]
-            kept.append((b"cache-control", MEDIA["Cache-Control"].encode()))
-            message = {**message, "headers": kept}
+            message = {**message, "headers": _with_cache_control(message["headers"], cache_control)}
         await send(message)
 
     return wrapped
@@ -240,9 +255,13 @@ class AgentFriendlyTalk:
         if segment not in STREAMLIT_SEGMENTS:
             await not_found_response(request)(scope, receive, send)
             return
-        if segment in STATIC_SEGMENTS and scope["method"] in ("GET", "HEAD"):
-            await self.app(scope, receive, _edge_cached(send))
-            return
+        if scope["method"] in ("GET", "HEAD"):
+            if segment in STATIC_SEGMENTS:
+                await self.app(scope, receive, _edge_cached(send, MEDIA["Cache-Control"]))
+                return
+            if path == HOST_CONFIG:
+                await self.app(scope, receive, _edge_cached(send, PAGE["Cache-Control"]))
+                return
         if path != f"/{TALK}/" or scope["method"] not in ("GET", "HEAD"):
             await self.app(scope, receive, send)
             return
@@ -251,7 +270,7 @@ class AgentFriendlyTalk:
             md = Response(
                 site.talk_markdown(),
                 media_type=MARKDOWN,
-                headers={"Vary": "Accept", "Link": link, "Cache-Control": "no-cache"},
+                headers={"Vary": "Accept", "Link": link, "Cache-Control": PAGE["Cache-Control"]},
             )
             await md(scope, receive, send)
             return
@@ -286,6 +305,11 @@ class AgentFriendlyTalk:
                 (b"vary", b"Accept"),
                 (b"link", link.encode()),
             ]
+            if start.get("status") == 200:
+                # The shell is the same for every visitor (the per-visitor XSRF cookie comes from
+                # /_stcore/health), so the CDN answers crawlers and repeat loads without waking the
+                # function.
+                kept = _with_cache_control(kept, PAGE["Cache-Control"])
             await send({**start, "headers": kept})
             await send({"type": "http.response.body", "body": b"" if head_only else out})
 
