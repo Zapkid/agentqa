@@ -30,6 +30,7 @@ dependencies = [
   "ruff>=0.16,<0.17",  # run-time: static checks on generated tests
   "streamlit>=1.65,<2",  # VeroniQA UI
   "pypdf>=6.19,<7",  # text extraction for uploaded PDFs
+  "certifi>=2026.10.19,<2028",  # TLS trust store: first without the compromised eMudhra intermediates
 ]
 
 [project.optional-dependencies]
