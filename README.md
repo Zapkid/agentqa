@@ -50,7 +50,7 @@ are labelled on screen):
 
 | video | shows |
 |---|---|
-| [**Meet VeroniQA** (85 s, with sound)](media/videos/veroniqa-intro.mp4) | a narrated 1080p introduction: knowledge base, cited answers, safe links, test runs from chat, and the cost result; captions burned in plus a [subtitle file](media/videos/veroniqa-intro.srt) |
+| [**Meet VeroniQA** (50 s, with sound)](media/videos/veroniqa-intro.mp4) | a narrated 720p introduction under 3 MB: knowledge base, cited answers, test runs from chat, and the cost result; captions burned in plus a [subtitle file](media/videos/veroniqa-intro.srt). `make video-intro-full` renders the longer 1080p version |
 | [Same bugs found, a fraction of the bill](media/videos/01-cost-vs-quality.mp4) | the dispatcher against "strongest model for everything": recall and cost per run |
 | [Trust is a number](media/videos/02-trust-measured.mp4) | performance defects caught, prompt injections quarantined, the saving from memory |
 | [Meet VeroniQA](media/videos/03-meet-veroniqa.mp4) | real screenshots: knowledge base, cited answers, a blocked unsafe link, a test run from chat |

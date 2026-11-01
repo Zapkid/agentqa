@@ -105,23 +105,53 @@ The image runs as an unprivileged user, listens on `$PORT` and writes only under
 
 ## Keeping Vercel's image storage small
 
-Vercel stores the container image of every deployment (each push to `main` and each branch
-preview), so storage grows by one image per push until old deployments expire or are removed.
-Two things keep it down:
+Vercel keeps the container image of every deployment (each push to `main` and each branch
+preview) in an OCI registry, and bills the storage. A registry stores a **layer once, keyed by its
+content**, so what matters is how much each new deployment adds, not how big one image is. By
+default a deployment of this app added a whole new copy of the dependencies, which is how the
+repository reached 14.5 GB. Four things keep it down:
 
-- **A small image.** `Dockerfile.vercel` builds in two stages, so uv, its download cache (as big
-  as the environment, about 830 MB) and the build layers are not shipped, and it uninstalls the
-  packages the website never uses: locust and matplotlib (only `agentqa perf` and `agentqa eval`
-  use them), and kubernetes and onnxruntime (Chroma dependencies for its distributed server and
-  default embedding model; VeroniQA embeds locally). That took the image from about 2.1 GB to
-  about 0.9 GB. The build ends with `import agentqa.veroniqa.server`, so if the app ever starts
-  needing one of those packages the build fails instead of the deployment. Compiled bytecode
-  (141 MB) is kept for faster cold starts; set `UV_COMPILE_BYTECODE=0` to trade that for size.
-- **Expiring old deployments.** In the Vercel dashboard, **Settings → Security → Deployment
-  Retention**, set short retention for preview, canceled and errored deployments (production is
-  kept as the rollback target). Existing old deployments can be removed with
-  `vercel remove <deployment-url>` or from the project's Deployments page; the images are freed
-  with them. The tooling in this repository cannot do either, they need your Vercel account.
+- **The dependencies are a layer of their own, built to be byte-identical.** `Dockerfile.vercel`
+  has a `deps` stage that installs only the locked third-party packages (the project is not
+  installed; the code runs from `/app` through `PYTHONPATH`), trims the ones the website never
+  uses (locust and matplotlib serve `agentqa perf` and `agentqa eval` only; kubernetes and
+  onnxruntime are Chroma dependencies for its server mode and default embedding model, while
+  VeroniQA embeds locally), and makes the tree reproducible: bytecode compiled by content hash
+  (`unchecked-hash`, with `-f` because venv creation leaves one timestamp-based `.pyc` behind) and
+  a fixed `PYTHONHASHSEED` (set constants are marshalled in hash order, so without it the same
+  source compiled to different bytes: seen in pycparser), and every file time set to the epoch.
+  Every deployment after the first that uses the same `uv.lock` reuses that layer.
+- **The video and the code are separate layers on top**, each passing through its own stage so
+  its file times are fixed (a `COPY` from a git checkout carries that checkout's times, which
+  differ every build). An unchanged video adds nothing; a code change adds a few MB, not about
+  770 MB.
+- **Dependabot branches do not build.** Each one changes the lockfile, so each used to store a
+  whole new dependency layer (seven in one afternoon). `vercel.json`'s `ignoreCommand` skips
+  `dependabot/*` branches (GitHub's CI still tests them); production and every other branch build.
+  A test runs the command for real branch names.
+- **The media is small.** The page loads one video, its poster and its captions, about 3 MB in
+  all (a test enforces the ceiling): `scripts/videos/veroniqa_intro.py` renders a 50 second, 720p
+  version with a mono voice, encoded in two passes to a byte budget; `--full` renders the longer
+  1080p one (not committed).
+
+**How this was checked, and what was not.** The image cannot be built in this repository's CI (no
+Docker daemon), so the dependency tree was built outside Docker with the Dockerfile's exact steps
+and compared byte for byte: before the fixes two builds of the same lockfile differed (one file,
+then another); after, builds with the fixed seed are identical (see the commit message for the
+counts). What has not been observed is the registry itself deduplicating layers: that depends on
+Vercel's builder keeping layers as built, and shows up in the storage figure over the next
+deployments.
+
+**What the tooling here cannot do (it needs your Vercel account):** shrink what is already stored.
+Old images stay until their deployments are removed or expire:
+
+- In the Vercel dashboard, **Settings → Security → Deployment Retention**: short retention for
+  preview, canceled and errored deployments (production is kept as the rollback target).
+- Remove old deployments from the project's Deployments page or with
+  `vercel remove <deployment-url>`; the images are freed with them. The registry itself is listed
+  with `vercel vcr image ls <repository>`.
+- The oldest deployments (before the two-stage build) are about 2.1 GB each, so removing those
+  first frees the most.
 
 ## Keeping Fluid function CPU and memory low
 

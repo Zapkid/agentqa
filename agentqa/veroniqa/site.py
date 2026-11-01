@@ -28,7 +28,7 @@ AUTHOR = "Rowan Kendal"
 AUTHOR_URL = "https://www.rowan-kendal.com/"
 CONTACT_URL = f"{REPO_URL}/issues"
 SECURITY_CONTACT = f"{REPO_URL}/security/advisories/new"
-VIDEO_SECONDS = 85  # media/videos/veroniqa-intro.mp4 (85.2 s)
+VIDEO_SECONDS = 50  # media/videos/veroniqa-intro.mp4 (see tests/test_veroniqa_media.py)
 VIDEO_DATE = "2026-10-09"
 
 NAME = "VeroniQA"
@@ -664,8 +664,8 @@ def home_page() -> str:
 <meta property="og:image:alt" content="VeroniQA, your AI assistant for API testing">
 <meta property="og:video" content="{url}/videos/veroniqa-intro.mp4">
 <meta property="og:video:type" content="video/mp4">
-<meta property="og:video:width" content="1920">
-<meta property="og:video:height" content="1080">
+<meta property="og:video:width" content="1280">
+<meta property="og:video:height" content="720">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{_e(TITLE)}">
 <meta name="twitter:description" content="{_e(DESCRIPTION)}">
@@ -716,13 +716,13 @@ def home_page() -> str:
   <section id="watch" aria-labelledby="watch-title">
     <div class="wrap">
       <p class="eyebrow">Watch</p>
-      <h2 id="watch-title">Meet VeroniQA <span class="grad">in 85 seconds</span></h2>
+      <h2 id="watch-title">Meet VeroniQA <span class="grad">in {VIDEO_SECONDS} seconds</span></h2>
       <p class="section-lead">Knowledge in, cited answers out, safe links, and a full test run from
       one chat message.</p>
       <figure class="video">
         <div class="frame">
           <video src="/videos/veroniqa-intro.mp4" poster="/videos/veroniqa-intro.jpg" controls
-            preload="metadata" playsinline aria-label="Meet VeroniQA, an 85-second introduction"></video>
+            preload="metadata" playsinline aria-label="Meet VeroniQA, a {VIDEO_SECONDS}-second introduction"></video>
         </div>
         <figcaption>Captions are built in.</figcaption>
       </figure>
@@ -968,7 +968,7 @@ def home_markdown() -> str:
 
 - Try it: [{url}/talk/]({url}/talk/) (no sign-up, no API keys; a private workspace preloaded
   with a demo API is created for you)
-- Watch: [Meet VeroniQA, 85 s video]({url}/videos/veroniqa-intro.mp4)
+- Watch: [Meet VeroniQA, {VIDEO_SECONDS} s video]({url}/videos/veroniqa-intro.mp4)
 - Developers: [API guide and CLI]({url}/developers.md) · [OpenAPI]({url}/openapi.json)
 - Source code: [{REPO_URL}]({REPO_URL})
 - Built by [{AUTHOR}]({AUTHOR_URL})
