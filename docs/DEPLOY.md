@@ -136,11 +136,14 @@ repository reached 14.5 GB. Four things keep it down:
 
 **How this was checked, and what was not.** The image cannot be built in this repository's CI (no
 Docker daemon), so the dependency tree was built outside Docker with the Dockerfile's exact steps
-and compared byte for byte: before the fixes two builds of the same lockfile differed (one file,
-then another); after, builds with the fixed seed are identical (see the commit message for the
-counts). What has not been observed is the registry itself deduplicating layers: that depends on
-Vercel's builder keeping layers as built, and shows up in the storage figure over the next
-deployments.
+and compared byte for byte (24,726 files). Before the fixes, two builds of the same lockfile
+differed; each fix removed one cause: a timestamp-based `.pyc` left by venv creation (`-f`), then
+bytecode that alternated between two byte patterns from run to run (`-j` parallel workers share
+interned objects in an order that varies; a serial compile with a fixed `PYTHONHASHSEED` does
+not). After that, three builds in a row gave the identical layer. What has not been observed is the
+registry itself deduplicating: that depends on Vercel's builder keeping layers as built, and shows
+up in the storage figure over the next deployments. The first PR preview is the first real build
+of this file.
 
 **What the tooling here cannot do (it needs your Vercel account):** shrink what is already stored.
 Old images stay until their deployments are removed or expire:
