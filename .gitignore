@@ -16,3 +16,6 @@ htmlcov/
 !evals/fixtures/**
 dist/
 KILLSWITCH
+
+# the longer 1080p introduction (make video-intro-full); the web page uses the short one
+/media/videos/veroniqa-intro-full.*

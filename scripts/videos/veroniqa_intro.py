@@ -1,17 +1,25 @@
-"""VeroniQA's narrated introduction (1080p, voice-over, music, captions).
+"""VeroniQA's narrated introduction (voice-over, music, captions).
 
     uv run --with kokoro-onnx==0.6.1 --with soundfile python scripts/videos/veroniqa_intro.py
+    ... same ... --full      # the longer 1080p version, for download rather than the web page
+
+The default is the web version the site serves: about 45 seconds, 720p, mono voice, encoded in two
+passes to a fixed size budget (MAX_WEB_BYTES) so it cannot creep past 3 MB. Every file the page
+loads is kept small because Vercel stores each deployment's image and serves the video through a
+function.
 
 Inputs: media/veroniqa/ (real screenshots and the run they show; capture_veroniqa.py) and
 results/*.json for the benchmark numbers. The narration is generated from that data.
 Voice: Kokoro-82M (Apache-2.0), voice af_heart, run locally; model files go to .cache/tts/
 (downloaded from the kokoro-onnx GitHub release if missing). Music: synthesised by audio.py.
-Outputs media/videos/veroniqa-intro.mp4 (H.264 + AAC + a soft English subtitle track) and
-media/videos/veroniqa-intro.srt.
+Outputs media/videos/veroniqa-intro.mp4 (H.264 + AAC + a soft English subtitle track), its
+poster frame media/videos/veroniqa-intro.jpg and media/videos/veroniqa-intro.srt. With --full:
+media/videos/veroniqa-intro-full.mp4 (not committed).
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -40,6 +48,12 @@ CACHE = REPO_ROOT / ".cache/veroniqa-intro"
 TTS = REPO_ROOT / ".cache/tts"
 SHOTS = REPO_ROOT / "media/veroniqa"
 OUT = REPO_ROOT / "media/videos/veroniqa-intro.mp4"
+OUT_FULL = REPO_ROOT / "media/videos/veroniqa-intro-full.mp4"
+# The web version: a hard size ceiling (decimal megabytes, like a download counter), the frame it
+# is encoded at (the scenes are still drawn at 1920x1080 and scaled down) and the voice bitrate.
+MAX_WEB_BYTES = 3_000_000
+WEB_W, WEB_H, WEB_FPS, WEB_AUDIO_KBPS = 1280, 720, 24, 56
+POSTER_AT = 2.8  # seconds in: the title card
 MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
 VOICE, SPEED = "af_heart", 0.96
 # How the voice should say things (captions keep the real spelling).
@@ -101,7 +115,14 @@ class Scene:
         return self.lead + speech + self.tail
 
 
-def narration() -> tuple[list[Scene], dict[str, Any]]:
+def _numbered(scenes: list[Scene], data: dict[str, Any]) -> tuple[list[Scene], dict[str, Any]]:
+    """The feature scenes are labelled 01, 02, ... in the order they appear, whichever are kept."""
+    keys = [sc.key for sc in scenes if sc.key not in ("intro", "proof", "outro")]
+    data["numbers"] = {k: f"{i:02d}" for i, k in enumerate(keys, 1)}
+    return scenes, data
+
+
+def narration(short: bool = True) -> tuple[list[Scene], dict[str, Any]]:
     facts = json.loads((SHOTS / "run.json").read_text())
     func_path, _ = latest_results()
     assert func_path, "no results/*.json"
@@ -115,6 +136,26 @@ def narration() -> tuple[list[Scene], dict[str, Any]]:
     which = "both" if found == seeded == 2 else ("all" if found == seeded else f"{found} of the")
     data = {"recall": recall, "ratio": ratio, "n": s3["n"], "found": found, "seeded": seeded,
             "passed": facts["outcomes"].get("passed", 0), "facts": facts}  # fmt: skip
+    if short:
+        # The same story in about half the time: no safe-links scene, one line where two were said.
+        return _numbered([
+            Scene("intro", ["Meet VeroniQA, your AI assistant for API testing.",
+                            "She turns your requirements into tests that run, and results you "
+                            "can trust."], lead=1.0, tail=0.5),
+            Scene("knowledge", ["Add what your team already has: requirement documents, PDF "
+                                "files, or links to your docs."], lead=0.4, tail=0.5),
+            Scene("ask", ["Ask a question in plain English.",
+                          "She answers from your own documents, and shows the passages she "
+                          "used."], lead=0.4, tail=0.5),
+            Scene("run", ["Then just say: run the tests.",
+                          "She writes and runs API tests, then triages every failure.",
+                          f"In this demo, she found {which} planted bugs, with "
+                          f"{data['passed']} tests passing."], lead=0.4, tail=0.5),
+            Scene("proof", [f"On our simulated benchmark, AgentQA found {recall}% of the planted "
+                            f"bugs, at {ratio}% of the cost."], lead=0.4, tail=0.5),
+            Scene("outro", ["VeroniQA. Ask, add knowledge, and run the tests."], lead=0.4,
+                  tail=2.2),
+        ], data)  # fmt: skip
     scenes = [
         Scene("intro", ["Meet VeroniQA, your AI assistant for API testing.",
                         "She turns your requirements into tests that run, and results you can trust."],
@@ -141,7 +182,7 @@ def narration() -> tuple[list[Scene], dict[str, Any]]:
                         f"{ratio}% of the cost."]),
         Scene("outro", ["VeroniQA. Ask, add knowledge, and run the tests."], tail=4.2),
     ]  # fmt: skip
-    return scenes, data
+    return _numbered(scenes, data)
 
 
 def spoken(text: str) -> str:
@@ -389,6 +430,7 @@ FEATURES = {
 
 def draw_feature(img: Image.Image, key: str, t: float, data: dict[str, Any]) -> None:
     num, label, headline, bullets, shot = FEATURES[key]
+    num = data.get("numbers", {}).get(key, num)
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     a = window(t, 0.1, 0.5)
@@ -572,7 +614,7 @@ def render_video(scenes: list[Scene], total: float, data: dict[str, Any], path: 
         raise RuntimeError("ffmpeg (video) failed")
 
 
-def render_audio(scenes: list[Scene], total: float, path: Path) -> None:
+def render_audio(scenes: list[Scene], total: float, path: Path, web: bool = False) -> None:
     n = int(total * audio.SR)
     vo = np.zeros(n)
     for sc in scenes:
@@ -592,29 +634,57 @@ def render_audio(scenes: list[Scene], total: float, path: Path) -> None:
     )
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(vo_path), "-i", str(mu_path),
-         "-filter_complex", graph, "-map", "[out]", "-c:a", "aac", "-b:a", "192k", str(path)],
+         "-filter_complex", graph, "-map", "[out]", "-c:a", "aac",
+         *(["-ac", "1", "-b:a", f"{WEB_AUDIO_KBPS}k"] if web else ["-b:a", "192k"]), str(path)],
         check=True,
     )  # fmt: skip
+
+
+def encode_web(video: Path, total: float) -> Path:
+    """Two-pass H.264 of the 1080p render at the web size, aimed at the byte budget: pass one
+    measures the picture, pass two spends exactly the bits the budget leaves after the voice."""
+    audio_bps = WEB_AUDIO_KBPS * 1000
+    video_bps = int((MAX_WEB_BYTES - 60_000) * 8 / total - audio_bps)  # 60 kB: container, subs
+    out = CACHE / "video-web.mp4"
+    base = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-an", "-vf",
+            f"scale={WEB_W}:{WEB_H}:flags=lanczos,fps={WEB_FPS}", "-c:v", "libx264",
+            "-preset", "veryslow", "-tune", "animation", "-pix_fmt", "yuv420p",
+            "-b:v", str(video_bps), "-passlogfile", str(CACHE / "x264")]  # fmt: skip
+    subprocess.run([*base, "-pass", "1", "-f", "null", "/dev/null"], check=True)
+    subprocess.run([*base, "-pass", "2", str(out)], check=True)
+    return out
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--full", action="store_true", help="the longer 1080p version (not committed)")
+    short = not ap.parse_args().full
+    out = OUT if short else OUT_FULL
     CACHE.mkdir(parents=True, exist_ok=True)
-    scenes, data = narration()
+    scenes, data = narration(short)
     synthesize(scenes)
     total = timeline(scenes)
     print(f"timeline {total:.1f}s: " + ", ".join(f"{s.key} {s.duration:.1f}s" for s in scenes))
-    subs = srt(scenes, OUT.with_suffix(".srt"))
-    render_audio(scenes, total, CACHE / "audio.m4a")
+    subs = srt(scenes, out.with_suffix(".srt"))
+    render_audio(scenes, total, CACHE / "audio.m4a", web=short)
     render_video(scenes, total, data, CACHE / "video.mp4")
+    picture = encode_web(CACHE / "video.mp4", total) if short else CACHE / "video.mp4"
     subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(CACHE / "video.mp4"),
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(picture),
          "-i", str(CACHE / "audio.m4a"), "-i", str(subs), "-map", "0:v", "-map", "1:a",
          "-map", "2:s", "-c:v", "copy", "-c:a", "copy", "-c:s", "mov_text",
          "-metadata:s:s:0", "language=eng", "-metadata:s:a:0", "language=eng",
-         "-metadata", "title=Meet VeroniQA", "-movflags", "+faststart", str(OUT)],
+         "-metadata", "title=Meet VeroniQA", "-movflags", "+faststart", str(out)],
         check=True,
     )  # fmt: skip
-    print(f"wrote {OUT.relative_to(REPO_ROOT)} ({OUT.stat().st_size / 1e6:.1f} MB)")
+    if short:
+        poster = out.with_suffix(".jpg")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(POSTER_AT), "-i", str(picture),
+             "-frames:v", "1", "-q:v", "4", str(poster)], check=True)  # fmt: skip
+        assert out.stat().st_size <= MAX_WEB_BYTES, f"{out.stat().st_size} bytes is over budget"
+        print(f"wrote {poster.relative_to(REPO_ROOT)} ({poster.stat().st_size / 1e3:.0f} kB)")
+    print(f"wrote {out.relative_to(REPO_ROOT)} ({out.stat().st_size / 1e6:.2f} MB, {total:.0f} s)")
 
 
 if __name__ == "__main__":

@@ -109,6 +109,8 @@ def test_home_page_is_a_full_page_with_seo_metadata() -> None:
     import json
     import re
 
+    from agentqa.veroniqa import site
+
     client = TestClient(Starlette(routes=server.app._user_routes))
     page = client.get("/").text
     for part in (
@@ -136,7 +138,8 @@ def test_home_page_is_a_full_page_with_seo_metadata() -> None:
         "FAQPage",
     ]
     video = next(g for g in graph if g["@type"] == "VideoObject")
-    assert video["duration"] == "PT1M25S" and "Meet VeroniQA" in video["transcript"]
+    assert video["duration"] == site.iso_duration(site.VIDEO_SECONDS)
+    assert "Meet VeroniQA" in video["transcript"]
 
 
 def test_robots_sitemap_llms_and_favicon() -> None:

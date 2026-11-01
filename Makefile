@@ -3,7 +3,7 @@ UV ?= uv
 PY := $(UV) run python
 export PYTHONUNBUFFERED=1
 
-.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa veroniqa-hosted cli videos video-intro clean
+.PHONY: install lint fmt typecheck test test-fast cov secrets audit demo up down eval eval-live eval-replay perf-ab target example-tasks veroniqa veroniqa-hosted cli videos video-intro video-intro-full clean
 
 install:
 	$(UV) sync
@@ -63,12 +63,17 @@ veroniqa-hosted:
 videos:
 	$(PY) scripts/videos/render.py
 
-# Narrated 1080p introduction to VeroniQA (voice: Kokoro-82M, run locally; music: generated).
-# The second command checks the soundtrack with an independent speech recogniser.
+# Narrated introduction to VeroniQA (voice: Kokoro-82M, run locally; music: generated): the
+# 50 second, 720p, under-3-MB version the site serves. `make video-intro-full` renders the longer
+# 1080p one (not committed). The second command checks the soundtrack with an independent speech
+# recogniser.
 TTS_DEPS := --with kokoro-onnx==0.6.1 --with soundfile==0.14.0
 video-intro:
 	$(UV) run $(TTS_DEPS) python scripts/videos/veroniqa_intro.py
 	$(UV) run $(TTS_DEPS) --with sherpa-onnx==1.13.8 python scripts/videos/check_voice.py
+
+video-intro-full:
+	$(UV) run $(TTS_DEPS) python scripts/videos/veroniqa_intro.py --full
 
 # Second, differently shaped target: Swagger 2.0 contract, X-API-Key auth. BUGS=T01,T02 make example-tasks
 example-tasks:
